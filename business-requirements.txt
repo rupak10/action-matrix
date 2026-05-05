@@ -1,0 +1,34 @@
+#Core Business Requirements
+BR-001 : PKSF Concern Officer will create action matrix for a Partner Organization (PO). 
+While creating the action matrix the concern officer will be able to upload multiple files attached to the action matrix. There can be up to 3 files attached. 
+He/She will select the PO and enter required information (acm_master table fields + acm_master_file_attachments table fields for files). 
+There will be 2 optins : 1. Save draft, 2. Submit. Draft will be saved in the system and can be edited later by the same officer. 
+
+BR-001-1: After saving the action matrix by the pksf concern officer, he/she will get 1 button named "Forward for review", 
+where he/she can select any employee from the pksf and forward the matrix to him/her. Normally he/she will forward it to
+his supervisor. But the option will be open to forward to any employee of pksf. 
+ 
+BR-001-2: Supvervisor can approve or reject the matrix. 
+If approved (with remarks, if any), the matrix will be sent to the PO for review. 
+If rejected (with remarks), the matrix will be sent back to the Concern Officer for editing. 
+
+BR-002 : After an action matarix is approved by the supervisor, it will be first assigned to the PO conern officer and then po conern officer 
+will add comments (acm_comments table fields + acm_comments_file_attachments table fields for files). Each comment will be time stamped and will be saved in the system. 
+Each comment can have multiple file attachments. Then po conern officer will forward the action matrix to the PO supervisor officer. 
+PO supervisor officer can approve or reject the comments. 
+If approved (with remarks, if any), the matrix will be sent to the PKSF concern officer. 
+If rejected (with remarks), the matrix will be sent back to the PO Concern Officer for editing. 
+
+BR-003 : All the forward/reject operations will be stored in acm_movement table. 
+
+BR-004 : PKSF concert officer can add comments with file attachments. After commenting he/she will forward the action matrix to the PKSF supervisor and PKSF supervisor 
+can approve or reject it. 
+If approved (with remarks, if any), the matrix will be sent to the PO concern officer. 
+If rejected (with remarks), the matrix will be sent back to the PKSF concern officer for editing. 
+
+BR-005 : When the PKSF Concern Officer is satisfied with the resolution of all observations, 
+he/she will forward the matrix to the PKSF Supervisor with a "Closure Request." 
+If the PKSF Supervisor approves this request, the status will change to CLOSED, 
+and no further comments or edits will be allowed.
+
+
