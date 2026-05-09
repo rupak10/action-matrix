@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ActionMatrixController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -31,10 +32,18 @@ Route::middleware('auth')->group(function () {
     });
 
     // Action Matrix Module
-    Route::post('action-matrix/forward', [\App\Http\Controllers\ActionMatrixController::class, 'forward'])->name('action-matrix.forward');
-    Route::post('action-matrix/approve', [\App\Http\Controllers\ActionMatrixController::class, 'approve'])->name('action-matrix.approve');
-    Route::post('action-matrix/reject', [\App\Http\Controllers\ActionMatrixController::class, 'reject'])->name('action-matrix.reject');
-    Route::resource('action-matrix', \App\Http\Controllers\ActionMatrixController::class);
+    Route::post('action-matrix/forward', [ActionMatrixController::class, 'forward'])->name('action-matrix.forward');
+    Route::post('action-matrix/approve', [ActionMatrixController::class, 'approve'])->name('action-matrix.approve');
+    Route::post('action-matrix/reject', [ActionMatrixController::class, 'reject'])->name('action-matrix.reject');
+    
+    // PO Workflow Routes
+    Route::post('/action-matrix/comment', [ActionMatrixController::class, 'storeComment'])->name('action-matrix.comment');
+    Route::post('/action-matrix/po-forward', [ActionMatrixController::class, 'forwardToPoSupervisor'])->name('action-matrix.po-forward');
+    Route::post('/action-matrix/po-approve', [ActionMatrixController::class, 'approvePoResponse'])->name('action-matrix.po-approve');
+    Route::post('/action-matrix/po-reject', [ActionMatrixController::class, 'rejectPoResponse'])->name('action-matrix.po-reject');
+    Route::get('/action-matrix/{acm_id}/history', [ActionMatrixController::class, 'getHistory'])->name('action-matrix.history');
+    
+    Route::resource('action-matrix', ActionMatrixController::class);
 });
 
 require __DIR__.'/auth.php';

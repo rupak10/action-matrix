@@ -162,17 +162,20 @@ class ActionMatrixService
         });
     }
     /**
-     * Approve an Action Matrix.
+     * Approve an Action Matrix and forward to PO.
      */
-    public function approveMatrix(string $acmId, ?string $remarks, \App\Models\User $user): void
+    public function approveMatrix(string $acmId, ?string $remarks, string $toEmpId, \App\Models\User $user): void
     {
         $acmId = trim($acmId);
-        DB::transaction(function () use ($acmId, $remarks, $user) {
+        DB::transaction(function () use ($acmId, $remarks, $toEmpId, $user) {
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
 
             // 1. Update Master
             $master->update([
-                'status' => 'APPROVED',
+                'status' => 'PO_REVIEW',
+                'current_desk_emp_id' => $toEmpId,
+                'po_inbox' => 'Y',
+                'is_editable_by_po' => 'Y',
                 'updated_at' => now(),
                 'updated_by' => $user->emp_id
             ]);
@@ -183,8 +186,8 @@ class ActionMatrixService
                 'acm_id' => $acmId,
                 'sl' => $nextSl,
                 'from_emp_id' => $user->emp_id,
-                'to_emp_id' => $user->emp_id, // Stays at supervisor's desk but approved
-                'action_type' => 'APPROVED',
+                'to_emp_id' => $toEmpId,
+                'action_type' => 'APPROVED_AND_FORWARDED_TO_PO',
                 'remarks' => $remarks ?? '',
                 'created_by' => $user->emp_id,
                 'created_at' => now(),
@@ -218,6 +221,158 @@ class ActionMatrixService
                 'from_emp_id' => $user->emp_id,
                 'to_emp_id' => $creatorId,
                 'action_type' => 'SENT_BACK',
+                'remarks' => $remarks ?? '',
+                'created_by' => $user->emp_id,
+                'created_at' => now(),
+            ]);
+        });
+    }
+    /**
+     * Store a comment with optional file attachments.
+     */
+    public function storeComment(array $data, \App\Models\User $user): void
+    {
+        DB::transaction(function () use ($data, $user) {
+            $acmId = $data['acm_id'];
+            
+            // 1. Calculate next SL for comments
+            $nextSl = DB::table('acm_comments')->where('acm_id', $acmId)->max('sl') + 1;
+
+            // 2. Insert Comment
+            DB::table('acm_comments')->insert([
+                'acm_id' => $acmId,
+                'sl' => $nextSl,
+                'comment_source' => $user->emp_type, // PKSF or PO
+                'comment_short' => $data['comment_short'] ?? null,
+                'comment_detail' => $data['comment_detail'],
+                'created_by' => $user->emp_id,
+                'created_at' => now(),
+            ]);
+
+            // 3. Handle File Attachments (Up to 3)
+            if (isset($data['attachments']) && is_array($data['attachments'])) {
+                foreach ($data['attachments'] as $index => $file) {
+                    if ($file instanceof \Illuminate\Http\UploadedFile) {
+                        $fileName = time() . '_' . $file->getClientOriginalName();
+                        $filePath = $file->storeAs('acm_comments/' . $acmId, $fileName, 'public');
+
+                        DB::table('acm_comments_file_attachment')->insert([
+                            'acm_id' => $acmId,
+                            'sl' => $nextSl,
+                            'file_id' => $index + 1,
+                            'file_upload_by' => $user->emp_type,
+                            'file_name' => $file->getClientOriginalName(),
+                            'file_path' => $filePath,
+                            'file_type' => $file->getClientMimeType(),
+                            'file_size' => $file->getSize(),
+                            'created_by' => $user->emp_id,
+                            'created_at' => now(),
+                        ]);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * PO Officer forwards to PO Supervisor.
+     */
+    public function forwardToPoSupervisor(string $acmId, ?string $remarks, \App\Models\User $user): void
+    {
+        $acmId = trim($acmId);
+        DB::transaction(function () use ($acmId, $remarks, $user) {
+            $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
+            $supervisorId = $user->supervisor_emp_id;
+
+            if (!$supervisorId) {
+                throw new \Exception('No PO supervisor assigned to your profile.');
+            }
+
+            $master->update([
+                'status' => 'PO_SUBMITTED',
+                'current_desk_emp_id' => $supervisorId,
+                'updated_at' => now(),
+                'updated_by' => $user->emp_id
+            ]);
+
+            $nextSl = DB::table('acm_po_movements')->where('acm_id', $acmId)->max('sl') + 1;
+            DB::table('acm_po_movements')->insert([
+                'acm_id' => $acmId,
+                'sl' => $nextSl,
+                'from_emp_id' => $user->emp_id,
+                'to_emp_id' => $supervisorId,
+                'action_type' => 'FORWARDED_TO_SUPERVISOR',
+                'remarks' => $remarks ?? '',
+                'created_by' => $user->emp_id,
+                'created_at' => now(),
+            ]);
+        });
+    }
+
+    /**
+     * PO Supervisor approves and sends back to PKSF.
+     */
+    public function approvePoResponse(string $acmId, ?string $remarks, \App\Models\User $user): void
+    {
+        $acmId = trim($acmId);
+        DB::transaction(function () use ($acmId, $remarks, $user) {
+            $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
+            $pksfCreatorId = $master->created_by;
+
+            $master->update([
+                'status' => 'PO_APPROVED',
+                'current_desk_emp_id' => $pksfCreatorId,
+                'po_inbox' => 'N',
+                'is_editable_by_po' => 'N',
+                'updated_at' => now(),
+                'updated_by' => $user->emp_id
+            ]);
+
+            $nextSl = DB::table('acm_po_movements')->where('acm_id', $acmId)->max('sl') + 1;
+            DB::table('acm_po_movements')->insert([
+                'acm_id' => $acmId,
+                'sl' => $nextSl,
+                'from_emp_id' => $user->emp_id,
+                'to_emp_id' => $pksfCreatorId,
+                'action_type' => 'APPROVED_AND_SENT_TO_PKSF',
+                'remarks' => $remarks ?? '',
+                'created_by' => $user->emp_id,
+                'created_at' => now(),
+            ]);
+        });
+    }
+
+    /**
+     * PO Supervisor rejects and sends back to PO Officer.
+     */
+    public function rejectPoResponse(string $acmId, ?string $remarks, \App\Models\User $user): void
+    {
+        $acmId = trim($acmId);
+        DB::transaction(function () use ($acmId, $remarks, $user) {
+            $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
+            
+            // Find the last person who sent it (PO Concern Officer)
+            $lastMovement = DB::table('acm_po_movements')
+                ->where('acm_id', $acmId)
+                ->orderBy('sl', 'desc')
+                ->first();
+                
+            $targetOfficer = $lastMovement ? $lastMovement->from_emp_id : $master->created_by;
+
+            $master->update([
+                'status' => 'PO_REJECTED',
+                'current_desk_emp_id' => $targetOfficer,
+                'updated_at' => now(),
+                'updated_by' => $user->emp_id
+            ]);
+
+            $nextSl = DB::table('acm_po_movements')->where('acm_id', $acmId)->max('sl') + 1;
+            DB::table('acm_po_movements')->insert([
+                'acm_id' => $acmId,
+                'sl' => $nextSl,
+                'from_emp_id' => $user->emp_id,
+                'to_emp_id' => $targetOfficer,
+                'action_type' => 'REJECTED_BY_SUPERVISOR',
                 'remarks' => $remarks ?? '',
                 'created_by' => $user->emp_id,
                 'created_at' => now(),

@@ -46,6 +46,14 @@ class AcmMaster extends Model
     }
 
     /**
+     * Get the comments for this matrix.
+     */
+    public function comments()
+    {
+        return $this->hasMany(AcmComment::class, 'acm_id', 'acm_id')->orderBy('sl', 'asc');
+    }
+
+    /**
      * Get the PKSF movements for the matrix.
      */
     public function pksfMovements()
@@ -67,5 +75,13 @@ class AcmMaster extends Model
     public function discussions()
     {
         return $this->hasMany(AcmDiscussion::class, 'acm_id', 'acm_id')->orderBy('sl');
+    }
+
+    /**
+     * Check if the matrix has any comments.
+     */
+    public function hasComments()
+    {
+        return $this->comments()->exists();
     }
 }

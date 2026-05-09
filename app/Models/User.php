@@ -53,7 +53,7 @@ class User extends Authenticatable
      */
     public function isPksf()
     {
-        return $this->emp_type === 'PKSF';
+        return strtoupper($this->emp_type ?? '') === 'PKSF';
     }
 
     /**
@@ -61,7 +61,7 @@ class User extends Authenticatable
      */
     public function isPo()
     {
-        return $this->emp_type === 'PO';
+        return strtoupper($this->emp_type ?? '') === 'PO';
     }
 
     /**

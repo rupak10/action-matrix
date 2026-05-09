@@ -28,7 +28,12 @@ class ActionMatrixController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
             
-        return view('action_matrix.index', compact('matrices'));
+        // Fetch all PO Concern Officers (role 'PO_CO') for automatic assignment
+        $poOfficers = \App\Models\User::whereHas('roles', function($q) {
+            $q->where('name', 'PO_CO');
+        })->get();
+            
+        return view('action_matrix.index', compact('matrices', 'poOfficers'));
     }
 
     /**
@@ -126,13 +131,14 @@ class ActionMatrixController extends Controller
     {
         $request->validate([
             'acm_id' => 'required|string',
+            'to_emp_id' => 'required|string|exists:users,emp_id',
             'remarks' => 'nullable|string|max:1000'
         ]);
 
         try {
-            $this->acmService->approveMatrix($request->acm_id, $request->remarks, auth()->user());
+            $this->acmService->approveMatrix($request->acm_id, $request->remarks, $request->to_emp_id, auth()->user());
             return redirect()->route('action-matrix.index')
-                ->with('success', 'Action Matrix ' . $request->acm_id . ' has been approved.');
+                ->with('success', 'Action Matrix ' . $request->acm_id . ' has been approved and forwarded to PO.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -155,5 +161,102 @@ class ActionMatrixController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Store a comment (PO or PKSF).
+     */
+    public function storeComment(Request $request)
+    {
+        $request->validate([
+            'acm_id' => 'required|string',
+            'comment_detail' => 'required|string',
+            'attachments.*' => 'nullable|file|max:5120' // 5MB max
+        ]);
+
+        try {
+            $this->acmService->storeComment($request->all(), auth()->user());
+            
+            // If the user checked "forward to supervisor"
+            if ($request->has('forward_to_supervisor') && $request->forward_to_supervisor == 1) {
+                $this->acmService->forwardToPoSupervisor($request->acm_id, 'Auto-forwarded after commenting.', auth()->user());
+                return redirect()->route('action-matrix.index')
+                    ->with('success', 'Comment saved and forwarded to supervisor.');
+            }
+
+            return back()->with('success', 'Comment saved successfully.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * PO Officer forwards to PO Supervisor.
+     */
+    public function forwardToPoSupervisor(Request $request)
+    {
+        $request->validate([
+            'acm_id' => 'required|string',
+            'remarks' => 'nullable|string'
+        ]);
+
+        try {
+            $this->acmService->forwardToPoSupervisor($request->acm_id, $request->remarks, auth()->user());
+            return redirect()->route('action-matrix.index')
+                ->with('success', 'Forwarded to PO Supervisor successfully.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * PO Supervisor approves and sends to PKSF.
+     */
+    public function approvePoResponse(Request $request)
+    {
+        $request->validate([
+            'acm_id' => 'required|string',
+            'remarks' => 'nullable|string'
+        ]);
+
+        try {
+            $this->acmService->approvePoResponse($request->acm_id, $request->remarks, auth()->user());
+            return redirect()->route('action-matrix.index')
+                ->with('success', 'PO Response approved and sent to PKSF.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * PO Supervisor rejects and sends back to officer.
+     */
+    public function rejectPoResponse(Request $request)
+    {
+        $request->validate([
+            'acm_id' => 'required|string',
+            'remarks' => 'nullable|string'
+        ]);
+
+        try {
+            $this->acmService->rejectPoResponse($request->acm_id, $request->remarks, auth()->user());
+            return redirect()->route('action-matrix.index')
+                ->with('success', 'Response sent back to officer for correction.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Fetch full history for a matrix.
+     */
+    public function getHistory($acm_id)
+    {
+        $master = \App\Models\AcmMaster::with(['comments.attachments', 'pksfMovements', 'poMovements'])
+            ->where('acm_id', $acm_id)
+            ->firstOrFail();
+
+        // Build a unified history view
+        return view('action_matrix.partials.history', compact('master'))->render();
     }
 }
