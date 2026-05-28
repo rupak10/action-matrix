@@ -51,6 +51,7 @@
                             'label'  => 'Report 1',
                             'route'  => 'reports.report1',
                             'active' => request()->routeIs('reports.report1'),
+                            'target' => '_blank',
                         ],
                     ],
                 ],
@@ -171,8 +172,10 @@
                     if (isset($group['roles']) && !auth()->user()->hasAnyRole($group['roles'])) {
                         continue;
                     }
-                    // PKSF-only groups hidden from PO users
-                    if (!empty($group['pksf_only']) && !auth()->user()->isPksf()) {
+                    // pksf_only groups: visible to PKSF users + Admin / Super_Admin; hidden from PO
+                    if (!empty($group['pksf_only'])
+                        && !auth()->user()->isPksf()
+                        && !auth()->user()->hasAnyRole(['Admin', 'Super_Admin'])) {
                         continue;
                     }
 
@@ -197,11 +200,15 @@
                         <div class="d-grid gap-1 mt-1">
                             @foreach ($group['children'] as $child)
                                 @php
-                                    // PKSF-only child items hidden from PO users
-                                    if (!empty($child['pksf_only']) && !auth()->user()->isPksf()) continue;
+                                    // pksf_only child items: visible to PKSF + Admin / Super_Admin; hidden from PO
+                                    if (!empty($child['pksf_only'])
+                                        && !auth()->user()->isPksf()
+                                        && !auth()->user()->hasAnyRole(['Admin', 'Super_Admin'])) continue;
                                     $href = isset($child['route']) ? route($child['route']) : ($child['url'] ?? '#');
                                 @endphp
-                                <a href="{{ $href }}" class="sub-nav-link {{ $child['active'] ? 'active' : '' }}">
+                                <a href="{{ $href }}"
+                                   class="sub-nav-link {{ $child['active'] ? 'active' : '' }}"
+                                   @if(!empty($child['target'])) target="{{ $child['target'] }}" @endif>
                                     {{ $child['label'] }}
                                 </a>
                             @endforeach

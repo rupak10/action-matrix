@@ -77,8 +77,12 @@ class PdfService
             'fontDir'          => $fontDirs,
             'fontdata'         => $fontData,
             'default_font'     => $defaultFont,
-            'autoScriptToLang' => true,   // auto-detect Bengali/Latin script blocks
-            'autoLangToFont'   => true,   // map detected script to the right font
+            // Disable auto script-to-lang detection: it can override the
+            // default_font and pick a fallback that has no Bengali glyphs,
+            // causing ??? marks. Using FreeSans/FreeSerif (or SolaimanLipi)
+            // directly as the single document font handles Bengali correctly.
+            'autoScriptToLang' => false,
+            'autoLangToFont'   => false,
         ]);
 
         $mpdf->SetTitle(pathinfo($filename, PATHINFO_FILENAME));

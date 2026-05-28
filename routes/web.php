@@ -56,8 +56,8 @@ Route::middleware('auth')->group(function () {
     
     Route::resource('action-matrix', ActionMatrixController::class);
 
-    // Reports — PKSF users only
-    Route::middleware('role:PKSF_CO,PKSF_SUP,Super_Admin,Admin')->prefix('reports')->name('reports.')->group(function () {
+    // Reports — authorization handled inside ReportController
+    Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/report-1', [ReportController::class, 'report1'])->name('report1');
     });
 });

@@ -3,206 +3,180 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    /* ── Page & Base ──────────────────────────────────────────────── */
+    /* ── Base ─────────────────────────────────────────────────── */
     body {
         font-family: 'freesans', sans-serif;
-        font-size: 11pt;
-        color: #1c2929;
-        line-height: 1.6;
+        font-size: 10pt;
+        color: #000000;
+        background: #ffffff;
         margin: 0;
+        line-height: 1.5;
     }
 
-    /* ── Header Band ──────────────────────────────────────────────── */
+    /* ── Top bar (date right, empty left) ─────────────────────── */
+    .top-bar {
+        width: 100%;
+        margin-bottom: 6px;
+    }
+    .top-bar td {
+        border: none;
+        padding: 0;
+    }
+    .print-date {
+        text-align: right;
+        font-size: 9pt;
+    }
+
+    /* ── Centered header ──────────────────────────────────────── */
     .report-header {
-        background-color: #1b3a3a;
-        color: #ffffff;
-        padding: 16px 20px;
-        margin-bottom: 20px;
+        text-align: center;
+        border-bottom: 2px solid #000000;
+        padding-bottom: 10px;
+        margin-bottom: 14px;
     }
-    .report-org {
-        font-size: 10pt;
-        opacity: 0.75;
-        margin: 0 0 4px 0;
-        letter-spacing: 0.04em;
-    }
-    .report-title-en {
-        font-size: 16pt;
+    .org-name-bn {
+        font-size: 14pt;
         font-weight: bold;
         margin: 0 0 2px 0;
     }
+    .org-name-en {
+        font-size: 10pt;
+        margin: 0 0 8px 0;
+    }
     .report-title-bn {
-        font-size: 14pt;
+        font-size: 13pt;
+        font-weight: bold;
+        margin: 0 0 2px 0;
+    }
+    .report-title-en {
+        font-size: 10pt;
         margin: 0;
     }
 
-    /* ── Meta row ─────────────────────────────────────────────────── */
-    .report-meta {
-        font-size: 9pt;
-        color: #5a7474;
-        border-bottom: 1px solid #dce8e6;
-        padding-bottom: 8px;
-        margin-bottom: 16px;
-    }
-
-    /* ── Section heading ──────────────────────────────────────────── */
-    .section-title {
-        font-size: 12pt;
-        font-weight: bold;
-        color: #1b3a3a;
-        border-left: 4px solid #1b3a3a;
-        padding-left: 10px;
-        margin: 18px 0 10px 0;
-    }
-
-    /* ── Body text ────────────────────────────────────────────────── */
-    p { margin: 0 0 10px 0; }
-
-    /* ── Table ────────────────────────────────────────────────────── */
-    table {
+    /* ── Table ────────────────────────────────────────────────── */
+    .matrix-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 10pt;
-        margin-bottom: 16px;
+        font-size: 9pt;
+        margin-top: 4px;
     }
-    thead tr {
-        background-color: #1b3a3a;
+    .matrix-table thead th {
+        background-color: #000000;
         color: #ffffff;
+        padding: 6px 7px;
+        border: 1px solid #000000;
+        font-weight: bold;
+        text-align: center;
     }
-    thead th {
-        padding: 9px 10px;
-        text-align: left;
-        border: 1px solid #2e5454;
-    }
-    tbody td {
-        padding: 8px 10px;
-        border: 1px solid #cdd8d8;
+    .matrix-table tbody td {
+        border: 1px solid #000000;
+        padding: 5px 7px;
         vertical-align: top;
     }
-    tbody tr:nth-child(even) td {
-        background-color: #f2f8f7;
+    .matrix-table tbody tr:nth-child(even) td {
+        background-color: #f2f2f2;
     }
+    .text-center { text-align: center; }
 
-    /* ── Notice box ───────────────────────────────────────────────── */
-    .notice-box {
-        border: 1px solid #a8c8c4;
-        background: #eef7f5;
-        border-radius: 6px;
-        padding: 12px 14px;
-        font-size: 10pt;
-        color: #1b3a3a;
-        margin-top: 20px;
-    }
-
-    /* ── Footer ───────────────────────────────────────────────────── */
+    /* ── Footer ───────────────────────────────────────────────── */
     .report-footer {
-        margin-top: 30px;
-        border-top: 1px solid #dce8e6;
-        padding-top: 8px;
-        font-size: 9pt;
-        color: #8a9e9e;
+        margin-top: 16px;
+        border-top: 1px solid #000000;
+        padding-top: 5px;
+        font-size: 8.5pt;
         text-align: center;
     }
 </style>
 </head>
 <body>
 
-{{-- ── Report Header ──────────────────────────────────────────────── --}}
+{{-- ── Print date — top right ──────────────────────────────────── --}}
+<table class="top-bar">
+    <tr>
+        <td></td>
+        <td class="print-date">
+            মুদ্রণের তারিখ / Print Date: <strong>{{ $printedAt }}</strong>
+        </td>
+    </tr>
+</table>
+
+{{-- ── Centered header ─────────────────────────────────────────── --}}
 <div class="report-header">
-    <p class="report-org">পল্লী কর্ম-সহায়ক ফাউন্ডেশন (পিকেএসএফ) | Palli Karma-Sahayak Foundation (PKSF)</p>
-    <p class="report-title-en">Action Matrix — Bangla Font Test Report</p>
-    <p class="report-title-bn">অ্যাকশন ম্যাট্রিক্স — বাংলা ফন্ট পরীক্ষামূলক প্রতিবেদন</p>
+    <p class="org-name-bn">পল্লী কর্ম-সহায়ক ফাউন্ডেশন (পিকেএসএফ)</p>
+    <p class="org-name-en">Palli Karma-Sahayak Foundation (PKSF)</p>
+    <p class="report-title-bn">অ্যাকশন ম্যাট্রিক্স তালিকা</p>
+    <p class="report-title-en">Action Matrix Register</p>
 </div>
 
-{{-- ── Meta ─────────────────────────────────────────────────────── --}}
-<div class="report-meta">
-    তৈরির তারিখ / Generated: <strong>{{ $generatedAt }}</strong>
-    &nbsp;&nbsp;|&nbsp;&nbsp;
-    তৈরি করেছেন / Generated by: <strong>{{ $generatedBy }}</strong>
-    &nbsp;&nbsp;|&nbsp;&nbsp;
-    রিপোর্ট নং / Report No.: <strong>RPT-001</strong>
-</div>
+{{-- ── Matrix table ─────────────────────────────────────────────── --}}
+@php
+    $statusMap = [
+        'SAVED'               => 'সংরক্ষিত / Draft',
+        'SUBMITTED'           => 'জমা দেওয়া হয়েছে / Submitted',
+        'REJECTED'            => 'ফেরত দেওয়া হয়েছে / Returned',
+        'PO_REVIEW'           => 'পিও পর্যালোচনা / PO Review',
+        'PO_SUBMITTED'        => 'পিও জমা / PO Submitted',
+        'PO_APPROVED'         => 'পিও অনুমোদিত / PO Approved',
+        'PO_REJECTED'         => 'পিও কর্তৃক ফেরত / PO Returned',
+        'WAITING_FOR_CLOSURE' => 'বন্ধের অপেক্ষায় / Awaiting Closure',
+        'REVISION_REQUESTED'  => 'সংশোধন চাওয়া হয়েছে / Revision Requested',
+        'PKSF_REJECTED'       => 'পিকেএসএফ কর্তৃক ফেরত / Returned by PKSF',
+        'CLOSED'              => 'বন্ধ / Closed',
+    ];
 
-{{-- ── Section 1: Bangla script test ─────────────────────────────── --}}
-<div class="section-title">বাংলা লিপি পরীক্ষা — Bengali Script Test</div>
+    $priorityMap = [
+        'HIGH'   => 'উচ্চ / HIGH',
+        'MEDIUM' => 'মাঝারি / MEDIUM',
+        'LOW'    => 'নিম্ন / LOW',
+    ];
+@endphp
 
-<p>
-    পল্লী কর্ম-সহায়ক ফাউন্ডেশন (পিকেএসএফ) বাংলাদেশের একটি শীর্ষস্থানীয় উন্নয়ন সংস্থা যা
-    দারিদ্র্য বিমোচন ও আর্থসামাজিক উন্নয়নে গুরুত্বপূর্ণ ভূমিকা পালন করে আসছে।
-    অ্যাকশন ম্যাট্রিক্স সিস্টেমটি পিকেএসএফ এবং তার অংশীদার সংস্থার (পিও) মধ্যে
-    পর্যবেক্ষণ এবং প্রতিক্রিয়ার ওয়ার্কফ্লো পরিচালনার জন্য ব্যবহৃত হয়।
-</p>
-<p>
-    This paragraph demonstrates that English and Bengali text can coexist in the same
-    document. The font used is <em>FreeSans</em> (bundled with mPDF), which covers the
-    full Bengali Unicode block (U+0980–U+09FF). For production reports, replace with
-    <strong>SolaimanLipi</strong> for optimal Bangla rendering.
-</p>
-
-{{-- ── Section 2: Sample numbers ─────────────────────────────────── --}}
-<div class="section-title">বাংলা সংখ্যা — Bangla Numerals</div>
-
-<p>
-    আরবি সংখ্যা: 0 1 2 3 4 5 6 7 8 9 &nbsp;&nbsp;|&nbsp;&nbsp;
-    বাংলা সংখ্যা: ০ ১ ২ ৩ ৪ ৫ ৬ ৭ ৮ ৯
-</p>
-
-{{-- ── Section 3: Sample table ────────────────────────────────────── --}}
-<div class="section-title">নমুনা তালিকা — Sample Table</div>
-
-<table>
+<table class="matrix-table">
     <thead>
         <tr>
-            <th style="width:8%;">ক্রমিক<br>S/N</th>
-            <th style="width:12%;">পিও কোড<br>PO Code</th>
-            <th style="width:35%;">পর্যবেক্ষণ<br>Observation</th>
-            <th style="width:15%;">অগ্রাধিকার<br>Priority</th>
-            <th style="width:15%;">অবস্থা<br>Status</th>
-            <th style="width:15%;">পরিদর্শন তারিখ<br>Visit Date</th>
+            <th style="width:5%;">S/N</th>
+            <th style="width:13%;">ACM ID</th>
+            <th style="width:9%;">PO Code</th>
+            <th style="width:12%;">Visit Date</th>
+            <th style="width:16%;">Category</th>
+            <th style="width:11%;">Priority</th>
+            <th style="width:20%;">Status</th>
+            <th style="width:14%;">Created By</th>
         </tr>
     </thead>
     <tbody>
+        @forelse($matrices as $i => $m)
         <tr>
-            <td>১ / 1</td>
-            <td>ACM-001-01</td>
-            <td>আর্থিক লেনদেনে অনিয়ম পাওয়া গেছে।<br><em>Irregularity found in financial transactions.</em></td>
-            <td>উচ্চ<br><strong>HIGH</strong></td>
-            <td>চলমান<br>In Progress</td>
-            <td>১৫ জানুয়ারি ২০২৬<br>15 Jan 2026</td>
+            <td class="text-center">{{ $i + 1 }}</td>
+            <td>{{ $m->acm_id }}</td>
+            <td class="text-center">{{ $m->po_code }}</td>
+            <td class="text-center">
+                {{ \Carbon\Carbon::parse($m->visiting_date)->format('d M Y') }}
+            </td>
+            <td>{{ $m->observation_category }}</td>
+            <td class="text-center">
+                {{ $priorityMap[$m->priority] ?? $m->priority }}
+            </td>
+            <td>{{ $statusMap[$m->status] ?? $m->status }}</td>
+            <td>{{ $m->created_by_name ?? $m->created_by }}</td>
         </tr>
+        @empty
         <tr>
-            <td>২ / 2</td>
-            <td>ACM-007-03</td>
-            <td>পরিচালনা পদ্ধতিতে দুর্বলতা চিহ্নিত করা হয়েছে।<br><em>Weakness identified in management procedures.</em></td>
-            <td>মাঝারি<br><strong>MEDIUM</strong></td>
-            <td>বন্ধ<br>Closed</td>
-            <td>২২ ফেব্রুয়ারি ২০২৬<br>22 Feb 2026</td>
+            <td colspan="8" class="text-center" style="padding: 20px;">
+                কোনো রেকর্ড পাওয়া যায়নি। / No records found.
+            </td>
         </tr>
-        <tr>
-            <td>৩ / 3</td>
-            <td>ACM-010-05</td>
-            <td>অডিট রিপোর্টে উল্লিখিত সুপারিশ বাস্তবায়নে বিলম্ব।<br><em>Delay in implementing audit report recommendations.</em></td>
-            <td>নিম্ন<br><strong>LOW</strong></td>
-            <td>পর্যালোচনাধীন<br>Under Review</td>
-            <td>৫ মার্চ ২০২৬<br>5 Mar 2026</td>
-        </tr>
+        @endforelse
     </tbody>
 </table>
 
-{{-- ── Notice ───────────────────────────────────────────────────── --}}
-<div class="notice-box">
-    <strong>📌 ডেভেলপার নোট / Developer Note:</strong><br>
-    এই প্রতিবেদনটি বাংলা ফন্ট পরীক্ষার জন্য তৈরি করা হয়েছে।
-    উপরের বাংলা লেখাগুলো সঠিকভাবে প্রদর্শিত হলে ফন্ট কনফিগারেশন সফল হয়েছে।<br>
-    <em>This is a font-test report. If Bangla text renders correctly above, the font
-    configuration is working. For production, place <code>SolaimanLipi.ttf</code> in
-    <code>storage/fonts/</code> — PdfService will auto-detect and switch to it.</em>
-</div>
-
 {{-- ── Footer ──────────────────────────────────────────────────── --}}
 <div class="report-footer">
-    পল্লী কর্ম-সহায়ক ফাউন্ডেশন (পিকেএসএফ) &mdash; অ্যাকশন ম্যাট্রিক্স সিস্টেম
-    &nbsp;|&nbsp; PKSF Action Matrix System
-    &nbsp;|&nbsp; Generated: {{ $generatedAt }}
+    মোট রেকর্ড / Total Records: <strong>{{ count($matrices) }}</strong>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    তৈরি করেছেন / Generated by: <strong>{{ $printedBy }}</strong>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    পিকেএসএফ অ্যাকশন ম্যাট্রিক্স সিস্টেম / PKSF Action Matrix System
 </div>
 
 </body>
