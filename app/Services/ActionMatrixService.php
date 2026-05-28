@@ -11,9 +11,180 @@ use Illuminate\Support\Facades\Storage;
 class ActionMatrixService
 {
     /**
+     * Stat card counts for the index page header.
+     * Four lightweight COUNT queries — no full collection load.
+     */
+    public function getStatCounts(\App\Models\User $user): array
+    {
+        $base = DB::table('acm_master')
+            ->where(function ($q) use ($user) {
+                $q->where('created_by', $user->emp_id)
+                  ->orWhere('current_desk_emp_id', $user->emp_id);
+            });
+
+        return [
+            'total'          => (clone $base)->count(),
+            'action_required'=> (clone $base)->where('current_desk_emp_id', $user->emp_id)->count(),
+            'in_progress'    => (clone $base)->whereNotIn('status', ['SAVED', 'CLOSED'])->count(),
+            'closed'         => (clone $base)->where('status', 'CLOSED')->count(),
+        ];
+    }
+
+    /**
+     * Server-side DataTables data for the index table.
+     * Applies view filter, PO filter, priority filter, global search, sort, and pagination.
+     */
+    public function getMatricesTableData(array $dtParams, array $filters, \App\Models\User $user): array
+    {
+        // ── Base visibility query (same rule as the old index) ────────────
+        $base = DB::table('acm_master')
+            ->where(function ($q) use ($user) {
+                $q->where('created_by', $user->emp_id)
+                  ->orWhere('current_desk_emp_id', $user->emp_id);
+            });
+
+        // ── View filter (Dropdown 1) ──────────────────────────────────────
+        switch ($filters['view'] ?? 'all') {
+            case 'action_required':
+                $base->where('current_desk_emp_id', $user->emp_id);
+                break;
+            case 'created_by_me':
+                $base->where('created_by', $user->emp_id);
+                break;
+            case 'completed':
+                $base->where('status', 'CLOSED');
+                break;
+        }
+
+        // ── PO filter (Dropdown 2) ────────────────────────────────────────
+        if (!empty($filters['po_code'])) {
+            $base->where('po_code', $filters['po_code']);
+        }
+
+        // ── Priority filter (Dropdown 3) ──────────────────────────────────
+        if (!empty($filters['priority'])) {
+            $base->where('priority', $filters['priority']);
+        }
+
+        // ── Total before global search ────────────────────────────────────
+        $recordsFiltered = (clone $base)->count();
+
+        // ── DataTables global search ──────────────────────────────────────
+        $search = trim($dtParams['search']['value'] ?? '');
+        if ($search !== '') {
+            $base->where(function ($q) use ($search) {
+                $q->where('acm_id', 'like', "%{$search}%")
+                  ->orWhere('po_code', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhere('observation_category', 'like', "%{$search}%")
+                  ->orWhere('priority', 'like', "%{$search}%");
+            });
+            $recordsFiltered = (clone $base)->count();
+        }
+
+        // ── Sorting ───────────────────────────────────────────────────────
+        $columnMap = [
+            0 => 'acm_id',
+            1 => 'po_code',
+            2 => 'visiting_date',
+            3 => 'observation_category',
+            4 => 'priority',
+            5 => 'status',
+        ];
+        $orderCol = $columnMap[$dtParams['order'][0]['column'] ?? 0] ?? 'created_at';
+        $orderDir = ($dtParams['order'][0]['dir'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        $base->orderBy($orderCol, $orderDir);
+
+        // ── Pagination ────────────────────────────────────────────────────
+        $start  = max(0, (int)($dtParams['start']  ?? 0));
+        $length = max(1, (int)($dtParams['length'] ?? 25));
+        $rows   = (clone $base)->offset($start)->limit($length)->get();
+
+        // ── Latest incoming movement per row ──────────────────────────────
+        $acmIds = $rows->pluck('acm_id');
+
+        $pksfMovements = DB::table('acm_pksf_movements')
+            ->whereIn('acm_id', $acmIds)
+            ->get()
+            ->groupBy('acm_id');
+
+        $poMovements = DB::table('acm_po_movements')
+            ->whereIn('acm_id', $acmIds)
+            ->get()
+            ->groupBy('acm_id');
+
+        // ── Employee name lookup ──────────────────────────────────────────
+        $empIds = collect();
+        foreach ($rows as $row) {
+            $empIds->push($row->created_by);
+            $empIds->push($row->current_desk_emp_id);
+        }
+        foreach ($pksfMovements->flatten() as $m) {
+            $empIds->push($m->from_emp_id)->push($m->to_emp_id);
+        }
+        foreach ($poMovements->flatten() as $m) {
+            $empIds->push($m->from_emp_id)->push($m->to_emp_id);
+        }
+
+        $usersByEmpId = DB::table('users')
+            ->whereIn('emp_id', $empIds->filter()->unique()->values())
+            ->pluck('name', 'emp_id');
+
+        // ── Build data rows ───────────────────────────────────────────────
+        $data = $rows->map(function ($matrix) use ($pksfMovements, $poMovements, $usersByEmpId, $user) {
+
+            // Latest incoming movement for this matrix
+            $allMoves = collect($pksfMovements->get($matrix->acm_id, collect()))
+                ->map(fn($m) => (array)$m + ['source' => 'PKSF'])
+                ->concat(
+                    collect($poMovements->get($matrix->acm_id, collect()))
+                        ->map(fn($m) => (array)$m + ['source' => 'PO'])
+                )
+                ->filter(fn($m) => $m['to_emp_id'] === $matrix->current_desk_emp_id)
+                ->sortByDesc('created_at');
+
+            $incoming = $allMoves->first();
+
+            $incomingHtml = '-';
+            if ($incoming && $matrix->current_desk_emp_id === $user->emp_id) {
+                $fromName = $usersByEmpId[$incoming['from_emp_id']] ?? $incoming['from_emp_id'];
+                $date     = \Carbon\Carbon::parse($incoming['created_at'])->format('d M, h:i A');
+                $incomingHtml = "<div><strong>{$fromName}</strong><br><small class='text-muted'>{$date}</small></div>";
+            }
+
+            return [
+                'acm_id'               => $matrix->acm_id,
+                'po_code'              => $matrix->po_code,
+                'visiting_date'        => \Carbon\Carbon::parse($matrix->visiting_date)->format('d M, Y'),
+                'observation_category' => $matrix->observation_category,
+                'priority'             => $matrix->priority,
+                'status'               => $matrix->status,
+                'incoming_html'        => $incomingHtml,
+                // Raw fields the action-button renderer needs
+                '_current_desk_emp_id' => $matrix->current_desk_emp_id,
+                '_created_by'          => $matrix->created_by,
+                '_pksf_observation'    => $matrix->pksf_observation,
+                '_has_comments'        => DB::table('acm_comments')
+                                            ->where('acm_id', $matrix->acm_id)
+                                            ->exists(),
+            ];
+        })->values()->toArray();
+
+        return [
+            'draw'            => (int)($dtParams['draw'] ?? 1),
+            'recordsTotal'    => (clone DB::table('acm_master')->where(function ($q) use ($user) {
+                                    $q->where('created_by', $user->emp_id)
+                                      ->orWhere('current_desk_emp_id', $user->emp_id);
+                                 }))->count(),
+            'recordsFiltered' => $recordsFiltered,
+            'data'            => $data,
+        ];
+    }
+
+    /**
      * Generate a unique ACM ID based on PO code and serial number.
      * Format: acm-[PO_CODE]-[SL]
-     * 
+     *
      * @param string $poCode
      * @return string
      */

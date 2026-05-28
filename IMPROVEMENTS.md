@@ -37,9 +37,16 @@
 
 ## 🟠 High Value Features *(Missing Entirely)*
 
-### 5. "Action Required" dedicated view / filter tab
-- **Problem:** The index table mixes everything — matrices the user created, ones at their desk, ones already forwarded. There is no way to quickly see "what do I need to act on right now?"
-- **Suggestion:** Add a tab row above the table: `All | Action Required | Created by Me | Completed`. "Action Required" filters to `current_desk_emp_id = auth user` with a pending status. This is the most impactful UX change possible.
+### ~~5. "Action Required" dedicated view / filter tab~~ ✅ Done — 2026-05-28
+- Implemented as three server-side filter dropdowns above the table instead of tabs:
+  1. **View** — All Matrices / Action Required / Created by Me / Completed
+  2. **PO Code** — filter by PO
+  3. **Priority** — filter by priority level
+- Switched to full server-side DataTables (`serverSide: true`) with an AJAX endpoint (`GET /action-matrix/data` → `getData()`).
+- Service method `getMatricesTableData()` applies all filters, global search, sorting, and pagination in SQL — scales as data grows.
+- Action buttons rendered client-side from JSON using `renderActions()` which replicates the full conditional logic per role/status.
+- Status and priority cells use human-readable labels via `renderStatus()` / `renderPriority()`.
+- A "Clear" button appears automatically whenever any filter is active.
 
 ### 6. Deadline / Due Date tracking
 - **Problem:** No due date exists on a matrix. Nothing prevents a PO from ignoring an observation indefinitely.
@@ -160,7 +167,7 @@
 | 4 | Draft comment badge | 30 min | Medium | ⬜ Pending |
 | 5 | Fix hardcoded PO list | 30 min | High | ⬜ Pending |
 | 6 | N+1 fix for `hasComments()` | 30 min | Medium | ⬜ Pending |
-| 7 | "Action Required" filter tab | 2 hrs | Very High | ⬜ Pending |
+| 7 | "Action Required" filter tab + server-side DataTables | 2 hrs | Very High | ✅ Done |
 | 8 | Column filters on index table | 2 hrs | High | ⬜ Pending |
 | 9 | Action buttons on show page | 2 hrs | High | ⬜ Pending |
 | 10 | Status progression bar | 3 hrs | High | ⬜ Pending |

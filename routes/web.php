@@ -32,6 +32,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Action Matrix Module
+    Route::get('/action-matrix/data', [ActionMatrixController::class, 'getData'])->name('action-matrix.data');
     Route::post('action-matrix/forward', [ActionMatrixController::class, 'forward'])->name('action-matrix.forward');
     Route::post('action-matrix/approve', [ActionMatrixController::class, 'approve'])->name('action-matrix.approve');
     Route::post('action-matrix/reject', [ActionMatrixController::class, 'reject'])->name('action-matrix.reject');

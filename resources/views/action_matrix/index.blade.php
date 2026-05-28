@@ -41,12 +41,6 @@
     </div>
 
     <!-- Stats Overview -->
-    @php
-        $statTotal       = $matrices->count();
-        $statActionReq   = $matrices->where('current_desk_emp_id', auth()->user()->emp_id)->count();
-        $statInProgress  = $matrices->whereNotIn('status', ['SAVED', 'CLOSED'])->count();
-        $statClosed      = $matrices->where('status', 'CLOSED')->count();
-    @endphp
     <div class="row g-3 mb-4">
         {{-- Total Matrices --}}
         <div class="col-6 col-md-3">
@@ -55,7 +49,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="small opacity-75 mb-1">Total Matrices</div>
-                        <div class="h4 fw-bold mb-0">{{ $statTotal }}</div>
+                        <div class="h4 fw-bold mb-0">{{ $stats['total'] }}</div>
                     </div>
                     <i class="bi bi-layers fs-1 opacity-25"></i>
                 </div>
@@ -69,7 +63,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="small opacity-75 mb-1">Action Required</div>
-                        <div class="h4 fw-bold mb-0">{{ $statActionReq }}</div>
+                        <div class="h4 fw-bold mb-0">{{ $stats['action_required'] }}</div>
                     </div>
                     <i class="bi bi-exclamation-circle fs-1 opacity-25"></i>
                 </div>
@@ -83,7 +77,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="small text-dark opacity-75 mb-1">In Progress</div>
-                        <div class="h4 fw-bold mb-0 text-dark">{{ $statInProgress }}</div>
+                        <div class="h4 fw-bold mb-0 text-dark">{{ $stats['in_progress'] }}</div>
                     </div>
                     <i class="bi bi-arrow-repeat fs-1 opacity-25 text-dark"></i>
                 </div>
@@ -97,7 +91,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="small opacity-75 mb-1">Closed</div>
-                        <div class="h4 fw-bold mb-0">{{ $statClosed }}</div>
+                        <div class="h4 fw-bold mb-0">{{ $stats['closed'] }}</div>
                     </div>
                     <i class="bi bi-check-circle fs-1 opacity-25"></i>
                 </div>
@@ -108,12 +102,36 @@
     <!-- Table Section -->
     <div class="card border-0 shadow-lg rounded-4 overflow-hidden glass-card">
         <div class="card-body p-0">
-            <!-- Custom Search Box -->
-            <div class="p-4 bg-light border-bottom d-flex justify-content-end">
-                <div class="search-wrapper">
-                    <i class="bi bi-search"></i>
-                    <input type="text" id="matrixSearch" class="form-control rounded-pill ps-5" placeholder="Search matrices..." style="width: 360px;">
-                </div>
+            <!-- Filter Bar -->
+            <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
+                {{-- Dropdown 1: View --}}
+                <select id="filterView" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:170px;">
+                    <option value="all">All Matrices</option>
+                    <option value="action_required">Action Required</option>
+                    <option value="created_by_me">Created by Me</option>
+                    <option value="completed">Completed</option>
+                </select>
+
+                {{-- Dropdown 2: PO --}}
+                <select id="filterPo" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:150px;">
+                    <option value="">All POs</option>
+                    @foreach($formOptions['poList'] as $po)
+                        <option value="{{ $po['code'] }}">{{ $po['name'] }}</option>
+                    @endforeach
+                </select>
+
+                {{-- Dropdown 3: Priority --}}
+                <select id="filterPriority" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:150px;">
+                    <option value="">All Priorities</option>
+                    @foreach($formOptions['priorities'] as $p)
+                        <option value="{{ $p }}">{{ ucfirst(strtolower($p)) }}</option>
+                    @endforeach
+                </select>
+
+                {{-- Clear --}}
+                <button id="btnClearFilters" class="btn btn-sm btn-outline-secondary rounded-pill px-3" style="display:none;">
+                    <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
             </div>
 
             <div class="table-responsive p-4">
@@ -127,136 +145,10 @@
                             <th class="border-0">Priority</th>
                             <th class="border-0">Status</th>
                             <th class="border-0">Incoming From</th>
-                            <th class="border-0 text-center">Actions</th>
+                            <th class="border-0 text-center" data-orderable="false">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="fw-medium">
-                        @foreach($matrices as $matrix)
-                        <tr>
-                            <td class="fw-bold text-primary">{{ $matrix->acm_id }}</td>
-                            <td><span class="badge bg-light text-dark border fw-bold">{{ $matrix->po_code }}</span></td>
-                            <td>{{ \Carbon\Carbon::parse($matrix->visiting_date)->format('d M, Y') }}</td>
-                            <td>{{ $matrix->observation_category }}</td>
-                            <td>
-                                @php
-                                    $prioClass = match($matrix->priority) {
-                                        'HIGH' => 'danger',
-                                        'MEDIUM' => 'warning',
-                                        default => 'info'
-                                    };
-                                @endphp
-                                <span class="badge rounded-pill bg-{{ $prioClass }} text-uppercase px-3" style="font-size: 0.7rem;">
-                                    {{ $matrix->priority }}
-                                </span>
-                            </td>
-                            <td>
-                                @php
-                                    $statusClass = match($matrix->status) {
-                                        'SUBMITTED' => 'primary',
-                                        'APPROVED' => 'success',
-                                        'REJECTED', 'PKSF_REJECTED' => 'danger',
-                                        'SAVED', 'DRAFT', 'WAITING_FOR_CLOSURE', 'REVISION_REQUESTED' => 'warning',
-                                        'PO_APPROVED' => 'info',
-                                        'CLOSED' => 'success',
-                                        default => 'secondary'
-                                    };
-                                @endphp
-                                <span class="badge bg-soft-{{ $statusClass }} text-{{ $statusClass }} border border-{{ $statusClass }} px-3 rounded-pill">
-                                    {{ $matrix->status }}
-                                </span>
-                            </td>
-                            <td>
-                                @php
-                                    $incoming = $incomingAssignments->get($matrix->acm_id);
-                                @endphp
-                                @if($incoming && $matrix->current_desk_emp_id == auth()->user()->emp_id)
-                                    <div class="incoming-mini">
-                                        <div class="incoming-mini-copy">
-                                            <strong title="{{ $employeeLabel($incoming['from_emp_id']) }}">{{ $employeeName($incoming['from_emp_id']) }}</strong>
-                                            <small>{{ \Carbon\Carbon::parse($incoming['created_at'])->format('d M, h:i A') }}</small>
-                                        </div>
-                                    </div>
-                                @else
-                                    <span class="text-muted small">-</span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <div class="d-flex justify-content-center gap-2 align-items-center">
-                                    <a href="{{ route('action-matrix.show', $matrix->acm_id) }}" class="btn btn-outline-primary btn-sm px-3 fw-semibold rounded-pill">
-                                        View
-                                    </a>
-
-                                    @if($matrix->current_desk_emp_id == auth()->user()->emp_id)
-                                        @if($matrix->status === 'SUBMITTED' && auth()->user()->isPksf())
-                                            <button type="button" class="btn btn-primary btn-sm px-3 fw-semibold rounded-pill btn-review-matrix" 
-                                                    data-acmid="{{ $matrix->acm_id }}"
-                                                    data-pocode="{{ $matrix->po_code }}">
-                                                Review
-                                            </button>
-                                        @elseif(($matrix->status === 'PO_REVIEW' || $matrix->status === 'PO_REJECTED') && auth()->user()->isPo())
-                                            <button type="button" class="btn btn-primary btn-sm px-3 fw-semibold rounded-pill btn-comment-matrix"
-                                                    data-acmid="{{ $matrix->acm_id }}"
-                                                    data-pocode="{{ $matrix->po_code }}"
-                                                    data-category="{{ $matrix->observation_category }}"
-                                                    data-priority="{{ $matrix->priority }}"
-                                                    data-visitdate="{{ \Carbon\Carbon::parse($matrix->visiting_date)->format('d M Y') }}"
-                                                    data-observation="{{ $matrix->pksf_observation }}">
-                                                <i class="bi bi-chat-left-dots me-1"></i>Comment
-                                            </button>
-                                            
-                                            @if($matrix->hasComments())
-                                                <button type="button" class="btn btn-success btn-sm px-3 fw-semibold rounded-pill btn-po-forward" 
-                                                        data-acmid="{{ $matrix->acm_id }}">
-                                                    <i class="bi bi-send me-1"></i>Forward
-                                                </button>
-                                            @endif
-                                        @elseif($matrix->status === 'PO_SUBMITTED' && auth()->user()->isPo())
-                                            <button type="button" class="btn btn-warning btn-sm px-3 fw-semibold rounded-pill btn-po-review" 
-                                                    data-acmid="{{ $matrix->acm_id }}">
-                                                Review Response
-                                            </button>
-                                        @elseif(
-                                            in_array($matrix->status, ['SAVED', 'REJECTED'], true)
-                                            && auth()->user()->isPksf()
-                                            && $matrix->created_by === auth()->user()->emp_id
-                                        )
-                                            <a href="{{ route('action-matrix.edit', $matrix->acm_id) }}" class="btn btn-outline-secondary btn-sm px-3 fw-semibold rounded-pill">Edit</a>
-                                            <button type="button" class="btn btn-outline-success btn-sm px-3 fw-semibold rounded-pill btn-forward-matrix" data-acmid="{{ $matrix->acm_id }}">
-                                                Forward
-                                            </button>
-                                        @elseif(($matrix->status === 'PO_APPROVED' || $matrix->status === 'PKSF_REJECTED') && auth()->user()->isPksf())
-                                            <button type="button" class="btn btn-success btn-sm px-3 fw-semibold rounded-pill btn-pksf-request-closure" 
-                                                    data-acmid="{{ $matrix->acm_id }}">
-                                                <i class="bi bi-check-circle-fill me-1"></i>Request Closure
-                                            </button>
-                                            <button type="button" class="btn btn-warning btn-sm px-3 fw-semibold rounded-pill btn-pksf-request-revision" 
-                                                    data-acmid="{{ $matrix->acm_id }}">
-                                                <i class="bi bi-arrow-repeat me-1"></i>Request PO Revision
-                                            </button>
-                                        @elseif($matrix->status === 'WAITING_FOR_CLOSURE' && auth()->user()->isPksf())
-                                            <button type="button" class="btn btn-warning btn-sm px-3 fw-semibold rounded-pill btn-pksf-review-closure" 
-                                                    data-acmid="{{ $matrix->acm_id }}">
-                                                Review Closure
-                                            </button>
-                                        @elseif($matrix->status === 'REVISION_REQUESTED' && auth()->user()->isPksf())
-                                            <button type="button" class="btn btn-warning btn-sm px-3 fw-semibold rounded-pill btn-pksf-review-revision" 
-                                                    data-acmid="{{ $matrix->acm_id }}">
-                                                Review Revision Request
-                                            </button>
-                                        @endif
-                                    @endif
-
-                                    {{-- 
-                                    <button type="button" class="btn btn-light btn-sm px-3 fw-semibold rounded-pill border btn-view-discussion"
-                                            data-acmid="{{ $matrix->acm_id }}">
-                                        <i class="bi bi-clock-history me-1"></i>History
-                                    </button>
-                                    --}}
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </div>
@@ -1253,19 +1145,199 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
+        /* ── Auth context (passed from PHP) ──────────────────────────── */
+        const AUTH = {
+            empId:  '{{ auth()->user()->emp_id }}',
+            isPksf: {{ auth()->user()->isPksf() ? 'true' : 'false' }},
+            isPo:   {{ auth()->user()->isPo()   ? 'true' : 'false' }},
+        };
+
+        /* ── String-escape helpers ────────────────────────────────────── */
+        function escHtml(str) {
+            const d = document.createElement('div');
+            d.appendChild(document.createTextNode(str || ''));
+            return d.innerHTML;
+        }
+        function escAttr(str) {
+            return (str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        /* ── Cell renderers ───────────────────────────────────────────── */
+        function renderPriority(priority) {
+            const map = { HIGH: 'danger', MEDIUM: 'warning text-dark', LOW: 'info text-dark' };
+            const cls = map[priority] || 'secondary';
+            return `<span class="badge bg-${cls} rounded-pill px-3">${escHtml(priority || '—')}</span>`;
+        }
+
+        function renderStatus(status) {
+            const map = {
+                SAVED:               ['secondary',         'Draft'],
+                SUBMITTED:           ['primary',           'Submitted'],
+                REJECTED:            ['danger',            'Returned'],
+                PO_REVIEW:           ['info text-dark',    'PO Review'],
+                PO_SUBMITTED:        ['warning text-dark', 'PO Submitted'],
+                PO_APPROVED:         ['success',           'PO Approved'],
+                PO_REJECTED:         ['danger',            'PO Returned'],
+                WAITING_FOR_CLOSURE: ['primary',           'Awaiting Closure'],
+                REVISION_REQUESTED:  ['warning text-dark', 'Revision Requested'],
+                PKSF_REJECTED:       ['danger',            'Returned by PKSF'],
+                CLOSED:              ['success',           'Closed'],
+            };
+            const [cls, label] = map[status] || ['secondary', status];
+            return `<span class="badge bg-${cls} rounded-pill px-3">${escHtml(label)}</span>`;
+        }
+
+        /* ── Action-button builder ────────────────────────────────────── */
+        function renderActions(row) {
+            const myDesk   = row._current_desk_emp_id === AUTH.empId;
+            const myMatrix = row._created_by          === AUTH.empId;
+            const s        = row.status;
+            const id       = escAttr(row.acm_id);
+            const pc       = escAttr(row.po_code);
+            const cat      = escAttr(row.observation_category);
+            const pri      = escAttr(row.priority);
+            const vd       = escAttr(row.visiting_date);
+            const obs      = escAttr(row._pksf_observation || '');
+
+            let btns = '';
+
+            /* ── PKSF-side buttons ── */
+            if (AUTH.isPksf) {
+                // Edit draft / returned matrix
+                if (myMatrix && myDesk && ['SAVED','REJECTED','PKSF_REJECTED'].includes(s)) {
+                    btns += `<a href="/action-matrix/${id}/edit"
+                                class="btn btn-sm btn-outline-secondary rounded-pill me-1"
+                                title="Edit"><i class="bi bi-pencil"></i></a>`;
+                }
+                // Forward to PKSF supervisor
+                if (myMatrix && myDesk && s === 'SAVED') {
+                    btns += `<button class="btn btn-sm btn-outline-primary rounded-pill me-1 btn-forward-matrix"
+                                     data-acmid="${id}" title="Forward to Supervisor">
+                                <i class="bi bi-send me-1"></i>Forward</button>`;
+                }
+                // PKSF Supervisor: review submitted matrix
+                if (myDesk && s === 'SUBMITTED') {
+                    btns += `<button class="btn btn-sm btn-success rounded-pill me-1 btn-review-matrix"
+                                     data-acmid="${id}" data-pocode="${pc}" title="Review">
+                                <i class="bi bi-check-circle me-1"></i>Review</button>`;
+                }
+                // PKSF CO: PO responded — offer Closure or Revision
+                if (myMatrix && myDesk && s === 'PO_APPROVED') {
+                    btns += `<button class="btn btn-sm btn-outline-success rounded-pill me-1 btn-pksf-request-closure"
+                                     data-acmid="${id}" title="Request Closure">
+                                <i class="bi bi-check-circle-fill me-1"></i>Closure</button>
+                             <button class="btn btn-sm btn-outline-warning rounded-pill me-1 btn-pksf-request-revision"
+                                     data-acmid="${id}" title="Request Revision">
+                                <i class="bi bi-arrow-repeat me-1"></i>Revision</button>`;
+                }
+                // PKSF Supervisor: approve/reject closure request
+                if (myDesk && s === 'WAITING_FOR_CLOSURE') {
+                    btns += `<button class="btn btn-sm btn-success rounded-pill me-1 btn-pksf-review-closure"
+                                     data-acmid="${id}" title="Review Closure">
+                                <i class="bi bi-check-circle me-1"></i>Review Closure</button>`;
+                }
+                // PKSF Supervisor: approve/reject revision request
+                if (myDesk && s === 'REVISION_REQUESTED') {
+                    btns += `<button class="btn btn-sm btn-warning rounded-pill me-1 btn-pksf-review-revision"
+                                     data-acmid="${id}" title="Review Revision">
+                                <i class="bi bi-arrow-repeat me-1"></i>Review Revision</button>`;
+                }
+            }
+
+            /* ── PO-side buttons ── */
+            if (AUTH.isPo) {
+                // PO CO: comment + optional forward
+                if (myDesk && ['PO_REVIEW','PO_REJECTED'].includes(s)) {
+                    btns += `<button class="btn btn-sm btn-outline-primary rounded-pill me-1 btn-comment-matrix"
+                                     data-acmid="${id}" data-pocode="${pc}"
+                                     data-category="${cat}" data-priority="${pri}"
+                                     data-visitdate="${vd}" data-observation="${obs}"
+                                     title="Write / Edit Response">
+                                <i class="bi bi-chat-dots me-1"></i>Comment</button>`;
+                    if (row._has_comments) {
+                        btns += `<button class="btn btn-sm btn-success rounded-pill me-1 btn-po-forward"
+                                         data-acmid="${id}" title="Forward to Supervisor">
+                                    <i class="bi bi-send-fill me-1"></i>Forward</button>`;
+                    }
+                }
+                // PO Supervisor: review officer's response
+                if (myDesk && s === 'PO_SUBMITTED') {
+                    btns += `<button class="btn btn-sm btn-warning rounded-pill me-1 btn-po-review"
+                                     data-acmid="${id}" title="Review PO Response">
+                                <i class="bi bi-shield-check me-1"></i>Review</button>`;
+                }
+            }
+
+            /* ── Universal buttons ── */
+            btns += `<button class="btn btn-sm btn-outline-secondary rounded-pill me-1 btn-view-discussion"
+                             data-acmid="${id}" title="View History">
+                        <i class="bi bi-clock-history"></i></button>
+                     <a href="/action-matrix/${id}"
+                        class="btn btn-sm btn-outline-info rounded-pill"
+                        title="View Detail"><i class="bi bi-eye"></i></a>`;
+
+            return `<div class="d-flex flex-wrap gap-1 justify-content-center">${btns}</div>`;
+        }
+
+        /* ── DataTable — server-side ──────────────────────────────────── */
         const table = $('#matrixTable').DataTable({
+            serverSide: true,
+            processing: true,
             dom: 'rt<"d-flex justify-content-between align-items-center p-4 border-top"lp>',
-            pageLength: 10,
+            pageLength: 25,
             language: {
+                processing: '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading…</span></div></div>',
+                emptyTable:  '<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2 opacity-40"></i>No action matrices found.</div>',
+                zeroRecords: '<div class="text-center py-5 text-muted"><i class="bi bi-search fs-1 d-block mb-2 opacity-40"></i>No matching records found.</div>',
                 paginate: {
                     previous: '<i class="bi bi-chevron-left"></i>',
-                    next: '<i class="bi bi-chevron-right"></i>'
+                    next:     '<i class="bi bi-chevron-right"></i>'
                 }
+            },
+            ajax: {
+                url: '{{ route("action-matrix.data") }}',
+                type: 'GET',
+                data: function (d) {
+                    d.view     = $('#filterView').val();
+                    d.po_code  = $('#filterPo').val();
+                    d.priority = $('#filterPriority').val();
+                }
+            },
+            columns: [
+                { data: 'acm_id',               orderable: true  },
+                { data: 'po_code',              orderable: true  },
+                { data: 'visiting_date',        orderable: true  },
+                { data: 'observation_category', orderable: true  },
+                { data: 'priority',  orderable: true,  render: function(d)          { return renderPriority(d);  } },
+                { data: 'status',    orderable: true,  render: function(d)          { return renderStatus(d);    } },
+                { data: 'incoming_html', orderable: false, render: function(d)      { return d || '<span class="text-muted">—</span>'; } },
+                { data: null,        orderable: false, render: function(d, t, row)  { return renderActions(row); } },
+            ],
+            order: [[0, 'desc']],
+            drawCallback: function () {
+                const anyFilter = $('#filterView').val()     !== 'all'
+                               || $('#filterPo').val()       !== ''
+                               || $('#filterPriority').val() !== '';
+                $('#btnClearFilters').toggle(anyFilter);
             }
         });
 
-        $('#matrixSearch').on('keyup', function() {
-            table.search(this.value).draw();
+        /* ── Filter dropdown handlers ─────────────────────────────────── */
+        $('#filterView, #filterPo, #filterPriority').on('change', function () {
+            table.ajax.reload();
+        });
+
+        $('#btnClearFilters').on('click', function () {
+            $('#filterView').val('all');
+            $('#filterPo').val('');
+            $('#filterPriority').val('');
+            $(this).hide();
+            table.ajax.reload();
         });
 
         // Manual Modal Control: Populate data FIRST, then show modal

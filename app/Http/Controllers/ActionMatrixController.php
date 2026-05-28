@@ -16,38 +16,58 @@ class ActionMatrixController extends Controller
 
     /**
      * Display a listing of the resource.
+     * Data for the table is fetched server-side via getData() (AJAX).
      */
     public function index()
     {
         $user = auth()->user();
-        
-        // Filter: Show if current user is the creator OR if the item is currently at their desk
-        $matrices = \App\Models\AcmMaster::with(['pksfMovements', 'poMovements'])
-            ->where('created_by', $user->emp_id)
-            ->orWhere('current_desk_emp_id', $user->emp_id)
-            ->orderBy('created_at', 'desc')
-            ->get();
 
-        $incomingAssignments = $matrices
-            ->mapWithKeys(fn ($matrix) => [$matrix->acm_id => $this->latestIncomingMovement($matrix)])
-            ->filter();
+        // Stat cards — lightweight counts only, no full collection load
+        $stats = $this->acmService->getStatCounts($user);
 
-        $employeeIds = $incomingAssignments
-            ->flatMap(fn ($movement) => [$movement['from_emp_id'], $movement['to_emp_id']])
-            ->filter()
-            ->unique()
-            ->values();
-
-        $usersByEmpId = \App\Models\User::whereIn('emp_id', $employeeIds)
-            ->get()
-            ->keyBy('emp_id');
-            
-        // Fetch all PO Concern Officers (role 'PO_CO') for automatic assignment
-        $poOfficers = \App\Models\User::whereHas('roles', function($q) {
+        // Fetch all PO Concern Officers (role 'PO_CO') for modal assignment
+        $poOfficers = \App\Models\User::whereHas('roles', function ($q) {
             $q->where('name', 'PO_CO');
         })->get();
-            
-        return view('action_matrix.index', compact('matrices', 'poOfficers', 'incomingAssignments', 'usersByEmpId'));
+
+        // Filter options for the dropdowns
+        $formOptions = $this->getFormOptions();
+
+        // Empty collections — table data now comes via AJAX (getData)
+        $matrices            = collect();
+        $incomingAssignments = collect();
+        $usersByEmpId        = collect();
+
+        return view('action_matrix.index', compact(
+            'stats', 'poOfficers', 'formOptions',
+            'matrices', 'incomingAssignments', 'usersByEmpId'
+        ));
+    }
+
+    /**
+     * Server-side DataTables AJAX endpoint.
+     */
+    public function getData(Request $request)
+    {
+        $user = auth()->user();
+
+        $dtParams = [
+            'draw'   => $request->input('draw', 1),
+            'start'  => $request->input('start', 0),
+            'length' => $request->input('length', 25),
+            'search' => $request->input('search', ['value' => '']),
+            'order'  => $request->input('order', [['column' => 0, 'dir' => 'desc']]),
+        ];
+
+        $filters = [
+            'view'     => $request->input('view', 'all'),
+            'po_code'  => $request->input('po_code', ''),
+            'priority' => $request->input('priority', ''),
+        ];
+
+        $result = $this->acmService->getMatricesTableData($dtParams, $filters, $user);
+
+        return response()->json($result);
     }
 
     /**
