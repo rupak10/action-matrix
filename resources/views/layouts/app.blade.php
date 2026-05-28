@@ -190,7 +190,7 @@
                             <i class="bi bi-list fs-3"></i>
                         </button>
                         <button class="btn btn-link text-sl-primary p-0 me-3 d-none d-lg-block" id="desktopToggle">
-                            <i class="bi bi-list-nested fs-3"></i>
+                            <i class="bi bi-list fs-3"></i>
                         </button>
                         <div class="d-none d-md-block">
                             @include('layouts.partials.header')
@@ -209,11 +209,17 @@
                         </button>
                         <div class="vr mx-2 text-sl-border"></div>
                         <div class="dropdown">
+                            @php
+                                $authUser    = auth()->user();
+                                $displayName = $authUser->name;
+                                $displayRole = $authUser->roles->first()->name ?? $authUser->emp_type;
+                                $avatarUrl   = 'https://ui-avatars.com/api/?name=' . urlencode($displayName) . '&background=1b3a3a&color=fff';
+                            @endphp
                             <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
-                                <img src="https://ui-avatars.com/api/?name=Admin&background=1b3a3a&color=fff" alt="User" class="rounded-circle" width="32">
+                                <img src="{{ $avatarUrl }}" alt="{{ $displayName }}" class="rounded-circle" width="32">
                                 <div class="ms-2 d-none d-sm-block text-start">
-                                    <p class="mb-0 fw-bold small text-sl-primary">Admin User</p>
-                                    <p class="mb-0 text-sl-muted smaller">Super Admin</p>
+                                    <p class="mb-0 fw-bold small text-sl-primary">{{ $displayName }}</p>
+                                    <p class="mb-0 text-sl-muted smaller">{{ $displayRole }}</p>
                                 </div>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end sl-card mt-2 border-0 shadow">

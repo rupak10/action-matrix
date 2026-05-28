@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+@endpush
+
 @section('content')
 <div class="container-fluid py-3">
     <div class="row justify-content-center">
@@ -37,7 +41,10 @@
                             <!-- Visiting Date -->
                             <div class="col-md-4">
                                 <label class="form-label small fw-bold mb-1">Visiting Date</label>
-                                <input type="date" name="visiting_date" class="form-control form-control-sm" value="{{ old('visiting_date') }}" required>
+                                <div class="premium-date-field">
+                                    <i class="bi bi-calendar3"></i>
+                                    <input type="text" name="visiting_date" class="form-control form-control-sm js-premium-date" value="{{ old('visiting_date') }}" placeholder="Select visiting date" required>
+                                </div>
                             </div>
 
                             <!-- Category -->
@@ -75,12 +82,18 @@
                             <!-- Communication Dates -->
                             <div class="col-md-3">
                                 <label class="form-label small fw-bold mb-1">Letter Issue Date</label>
-                                <input type="date" name="letter_issue_date" class="form-control form-control-sm" value="{{ old('letter_issue_date') }}">
+                                <div class="premium-date-field">
+                                    <i class="bi bi-calendar3"></i>
+                                    <input type="text" name="letter_issue_date" class="form-control form-control-sm js-premium-date" value="{{ old('letter_issue_date') }}" placeholder="Select issue date">
+                                </div>
                             </div>
 
                             <div class="col-md-3">
                                 <label class="form-label small fw-bold mb-1">Letter Response Date</label>
-                                <input type="date" name="letter_response_date" class="form-control form-control-sm" value="{{ old('letter_response_date') }}">
+                                <div class="premium-date-field">
+                                    <i class="bi bi-calendar3"></i>
+                                    <input type="text" name="letter_response_date" class="form-control form-control-sm js-premium-date" value="{{ old('letter_response_date') }}" placeholder="Select response date">
+                                </div>
                             </div>
 
                             <!-- Observation Areas -->
@@ -98,7 +111,7 @@
                             <div class="col-12">
                                 <label class="form-label small fw-bold mb-1">Attachments (Max 3 files)</label>
                                 <input type="file" name="attachments[]" id="attachmentInput" class="form-control form-control-sm" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/*">
-                                <div class="form-text small text-muted">Allowed types: PDF, Word, Excel, Text, Images. (Max 5MB per file)</div>
+                                <div class="form-text small text-muted">Allowed types: PDF, Word, Excel, Text, Images. (Max 30MB per file)</div>
                                 <div id="fileListContainer" class="mt-2 d-flex flex-column gap-1"></div>
                                 @error('attachments') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                                 @error('attachments.*') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
@@ -162,6 +175,80 @@
         border-color: #1b3a3a;
     }
 
+    .premium-date-field {
+        position: relative;
+    }
+
+    .premium-date-field i {
+        color: #1b3a3a;
+        font-size: 0.95rem;
+        left: 12px;
+        pointer-events: none;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+    }
+
+    .premium-date-field .form-control-sm {
+        background: linear-gradient(180deg, #ffffff 0%, #f9fbfb 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+        cursor: pointer;
+        padding-left: 38px;
+    }
+
+    .premium-date-field .form-control-sm:hover {
+        border-color: #b8caca;
+        background: #ffffff;
+    }
+
+    .flatpickr-calendar {
+        border: 1px solid #dfe8e8;
+        border-radius: 14px;
+        box-shadow: 0 18px 48px rgba(27, 58, 58, 0.14);
+        font-family: 'Public Sans', sans-serif;
+        overflow: hidden;
+    }
+
+    .flatpickr-months {
+        background: #1b3a3a;
+    }
+
+    .flatpickr-current-month,
+    .flatpickr-months .flatpickr-month,
+    .flatpickr-months .flatpickr-prev-month,
+    .flatpickr-months .flatpickr-next-month {
+        color: #ffffff;
+        fill: #ffffff;
+    }
+
+    .flatpickr-weekdays {
+        background: #f4f7f7;
+    }
+
+    span.flatpickr-weekday {
+        color: #5f7070;
+        font-weight: 700;
+    }
+
+    .flatpickr-day {
+        border-radius: 8px;
+        color: #1c2929;
+    }
+
+    .flatpickr-day.today {
+        border-color: #1b3a3a;
+    }
+
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange,
+    .flatpickr-day.selected:hover {
+        background: #1b3a3a;
+        border-color: #1b3a3a;
+        color: #ffffff;
+    }
+
     .btn-primary {
         background: #1b3a3a;
         border: none;
@@ -173,8 +260,18 @@
     }
 </style>
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        flatpickr('.js-premium-date', {
+            altInput: true,
+            altFormat: 'd M, Y',
+            dateFormat: 'Y-m-d',
+            allowInput: true,
+            disableMobile: true,
+        });
+
         const fileInput = document.getElementById('attachmentInput');
         const fileListContainer = document.getElementById('fileListContainer');
         let accumulatedFiles = [];
@@ -243,4 +340,5 @@
         }
     });
 </script>
+@endpush
 @endsection

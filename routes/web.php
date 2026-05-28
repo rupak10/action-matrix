@@ -42,6 +42,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/action-matrix/po-approve', [ActionMatrixController::class, 'approvePoResponse'])->name('action-matrix.po-approve');
     Route::post('/action-matrix/po-reject', [ActionMatrixController::class, 'rejectPoResponse'])->name('action-matrix.po-reject');
     Route::get('/action-matrix/{acm_id}/history', [ActionMatrixController::class, 'getHistory'])->name('action-matrix.history');
+    Route::get('/action-matrix/{acmId}/my-draft', [ActionMatrixController::class, 'getMyDraft'])->name('action-matrix.my-draft');
+    
+    // PKSF Workflow Routes (Closure & Revision)
+    Route::post('/action-matrix/request-closure', [ActionMatrixController::class, 'requestClosure'])->name('action-matrix.request-closure');
+    Route::post('/action-matrix/request-revision', [ActionMatrixController::class, 'requestRevision'])->name('action-matrix.request-revision');
+    Route::post('/action-matrix/approve-closure', [ActionMatrixController::class, 'approveClosure'])->name('action-matrix.approve-closure');
+    Route::post('/action-matrix/reject-closure', [ActionMatrixController::class, 'rejectClosure'])->name('action-matrix.reject-closure');
+    Route::post('/action-matrix/approve-revision', [ActionMatrixController::class, 'approveRevision'])->name('action-matrix.approve-revision');
+    Route::post('/action-matrix/reject-revision', [ActionMatrixController::class, 'rejectRevision'])->name('action-matrix.reject-revision');
     
     Route::resource('action-matrix', ActionMatrixController::class);
 });

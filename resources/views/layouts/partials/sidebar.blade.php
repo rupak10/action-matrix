@@ -1,6 +1,7 @@
 @php
     $menuSections = [
         [
+            
             'label' => 'Main Menu',
             'groups' => [
                 [
@@ -159,8 +160,8 @@
 
 <div class="sidebar-nav">
     @foreach ($menuSections as $sectionIndex => $section)
-        <div class="mb-4">
-            <div class="sidebar-label">{{ $section['label'] }}</div>
+        <div class="mb-1">
+            {{-- <div class="sidebar-label">{{ $section['label'] }}</div> --}}
             
             @foreach ($section['groups'] as $groupIndex => $group)
                 @php
