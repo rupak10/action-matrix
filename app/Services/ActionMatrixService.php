@@ -20,6 +20,14 @@ class ActionMatrixService
             ->where(function ($q) use ($user) {
                 $q->where('created_by', $user->emp_id)
                   ->orWhere('current_desk_emp_id', $user->emp_id);
+
+                // PO users can also see all closed matrices for their PO code
+                if ($user->isPo() && $user->po_code) {
+                    $q->orWhere(function ($q2) use ($user) {
+                        $q2->where('po_code', $user->po_code)
+                           ->where('status', 'CLOSED');
+                    });
+                }
             });
 
         return [
@@ -36,11 +44,20 @@ class ActionMatrixService
      */
     public function getMatricesTableData(array $dtParams, array $filters, \App\Models\User $user): array
     {
-        // ── Base visibility query (same rule as the old index) ────────────
+        // ── Base visibility query ─────────────────────────────────────────
+        // PKSF: matrices they created or that are currently at their desk.
+        // PO  : same + all CLOSED matrices for their PO code (read-only archive).
         $base = DB::table('acm_master')
             ->where(function ($q) use ($user) {
                 $q->where('created_by', $user->emp_id)
                   ->orWhere('current_desk_emp_id', $user->emp_id);
+
+                if ($user->isPo() && $user->po_code) {
+                    $q->orWhere(function ($q2) use ($user) {
+                        $q2->where('po_code', $user->po_code)
+                           ->where('status', 'CLOSED');
+                    });
+                }
             });
 
         // ── View filter (Dropdown 1) ──────────────────────────────────────
@@ -175,6 +192,12 @@ class ActionMatrixService
             'recordsTotal'    => (clone DB::table('acm_master')->where(function ($q) use ($user) {
                                     $q->where('created_by', $user->emp_id)
                                       ->orWhere('current_desk_emp_id', $user->emp_id);
+                                    if ($user->isPo() && $user->po_code) {
+                                        $q->orWhere(function ($q2) use ($user) {
+                                            $q2->where('po_code', $user->po_code)
+                                               ->where('status', 'CLOSED');
+                                        });
+                                    }
                                  }))->count(),
             'recordsFiltered' => $recordsFiltered,
             'data'            => $data,

@@ -108,17 +108,21 @@
                 <select id="filterView" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:170px;">
                     <option value="all">All Matrices</option>
                     <option value="action_required">Action Required</option>
-                    <option value="created_by_me">Created by Me</option>
+                    @if(auth()->user()->isPksf())
+                        <option value="created_by_me">Created by Me</option>
+                    @endif
                     <option value="completed">Completed</option>
                 </select>
 
-                {{-- Dropdown 2: PO --}}
+                {{-- Dropdown 2: PO — PKSF users only (PO users belong to exactly one PO) --}}
+                @if(auth()->user()->isPksf())
                 <select id="filterPo" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:150px;">
                     <option value="">All POs</option>
                     @foreach($formOptions['poList'] as $po)
                         <option value="{{ $po['code'] }}">{{ $po['name'] }}</option>
                     @endforeach
                 </select>
+                @endif
 
                 {{-- Dropdown 3: Priority --}}
                 <select id="filterPriority" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:150px;">
@@ -1212,7 +1216,7 @@
                 if (myMatrix && myDesk && ['SAVED','REJECTED','PKSF_REJECTED'].includes(s)) {
                     btns += `<a href="/action-matrix/${id}/edit"
                                 class="btn btn-sm btn-outline-secondary rounded-pill me-1"
-                                title="Edit"><i class="bi bi-pencil"></i></a>`;
+                                title="Edit"><i class="bi bi-pencil me-1"></i>Edit</a>`;
                 }
                 // Forward to PKSF supervisor
                 if (myMatrix && myDesk && s === 'SAVED') {
@@ -1274,12 +1278,14 @@
             }
 
             /* ── Universal buttons ── */
-            btns += `<button class="btn btn-sm btn-outline-secondary rounded-pill me-1 btn-view-discussion"
-                             data-acmid="${id}" title="View History">
-                        <i class="bi bi-clock-history"></i></button>
-                     <a href="/action-matrix/${id}"
+            // History button commented out — the detail view (show page) covers this content
+            // btns += `<button class="btn btn-sm btn-outline-secondary rounded-pill me-1 btn-view-discussion"
+            //                  data-acmid="${id}" title="View History">
+            //             <i class="bi bi-clock-history me-1"></i>History</button>`;
+
+            btns += `<a href="/action-matrix/${id}"
                         class="btn btn-sm btn-outline-info rounded-pill"
-                        title="View Detail"><i class="bi bi-eye"></i></a>`;
+                        title="View Detail"><i class="bi bi-eye me-1"></i>View</a>`;
 
             return `<div class="d-flex flex-wrap gap-1 justify-content-center">${btns}</div>`;
         }
@@ -1321,7 +1327,7 @@
             order: [[0, 'desc']],
             drawCallback: function () {
                 const anyFilter = $('#filterView').val()     !== 'all'
-                               || $('#filterPo').val()       !== ''
+                               || ($('#filterPo').length && $('#filterPo').val() !== '')
                                || $('#filterPriority').val() !== '';
                 $('#btnClearFilters').toggle(anyFilter);
             }
@@ -1334,7 +1340,7 @@
 
         $('#btnClearFilters').on('click', function () {
             $('#filterView').val('all');
-            $('#filterPo').val('');
+            if ($('#filterPo').length) $('#filterPo').val('');
             $('#filterPriority').val('');
             $(this).hide();
             table.ajax.reload();

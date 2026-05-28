@@ -35,20 +35,22 @@
                             'active' => request()->routeIs('action-matrix.index'),
                         ],
                         [
-                            'label' => 'New Matrix',
-                            'route' => 'action-matrix.create',
-                            'active' => request()->routeIs('action-matrix.create'),
+                            'label'     => 'New Matrix',
+                            'route'     => 'action-matrix.create',
+                            'active'    => request()->routeIs('action-matrix.create'),
+                            'pksf_only' => true,   // PO users cannot create matrices
                         ],
                     ],
                 ],
                 [
-                    'title' => 'Projects',
-                    'icon' => 'bi-briefcase',
-                    'children' => [
+                    'title'     => 'Reports',
+                    'icon'      => 'bi-file-earmark-pdf',
+                    'pksf_only' => true,   // Reports menu visible to PKSF users only
+                    'children'  => [
                         [
-                            'label' => 'All Projects',
-                            'url' => '#',
-                            'active' => false,
+                            'label'  => 'Report 1',
+                            'route'  => 'reports.report1',
+                            'active' => request()->routeIs('reports.report1'),
                         ],
                     ],
                 ],
@@ -165,11 +167,15 @@
             
             @foreach ($section['groups'] as $groupIndex => $group)
                 @php
-                    // Check if group has a specific role requirement
+                    // Role-based group visibility
                     if (isset($group['roles']) && !auth()->user()->hasAnyRole($group['roles'])) {
                         continue;
                     }
-                    
+                    // PKSF-only groups hidden from PO users
+                    if (!empty($group['pksf_only']) && !auth()->user()->isPksf()) {
+                        continue;
+                    }
+
                     $isOpen = collect($group['children'])->contains(fn ($child) => $child['active']);
                     $collapseId = 'collapse-' . $sectionIndex . '-' . $groupIndex;
                 @endphp
@@ -191,7 +197,9 @@
                         <div class="d-grid gap-1 mt-1">
                             @foreach ($group['children'] as $child)
                                 @php
-                                    $href = isset($child['route']) ? route($child['route']) : $child['url'];
+                                    // PKSF-only child items hidden from PO users
+                                    if (!empty($child['pksf_only']) && !auth()->user()->isPksf()) continue;
+                                    $href = isset($child['route']) ? route($child['route']) : ($child['url'] ?? '#');
                                 @endphp
                                 <a href="{{ $href }}" class="sub-nav-link {{ $child['active'] ? 'active' : '' }}">
                                     {{ $child['label'] }}

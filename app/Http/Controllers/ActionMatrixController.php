@@ -145,7 +145,9 @@ class ActionMatrixController extends Controller
         $isAdmin = $user->hasAnyRole(['Super_Admin', 'Super Admin', 'Admin']);
         $canView = $isAdmin
             || $master->created_by === $user->emp_id
-            || $master->current_desk_emp_id === $user->emp_id;
+            || $master->current_desk_emp_id === $user->emp_id
+            // PO users can view any closed matrix for their own PO code
+            || ($user->isPo() && $user->po_code && $master->po_code === $user->po_code && $master->status === 'CLOSED');
 
         abort_unless($canView, 403, 'Unauthorized access to this Action Matrix.');
 

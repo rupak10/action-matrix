@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ActionMatrixController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -54,6 +55,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/action-matrix/reject-revision', [ActionMatrixController::class, 'rejectRevision'])->name('action-matrix.reject-revision');
     
     Route::resource('action-matrix', ActionMatrixController::class);
+
+    // Reports — PKSF users only
+    Route::middleware('role:PKSF_CO,PKSF_SUP,Super_Admin,Admin')->prefix('reports')->name('reports.')->group(function () {
+        Route::get('/report-1', [ReportController::class, 'report1'])->name('report1');
+    });
 });
 
 require __DIR__.'/auth.php';
