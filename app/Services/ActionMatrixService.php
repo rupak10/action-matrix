@@ -10,25 +10,42 @@ use Illuminate\Support\Facades\Storage;
 
 class ActionMatrixService
 {
+    // ── Role helper ───────────────────────────────────────────────────────
+    private function isAdmin(\App\Models\User $user): bool
+    {
+        return $user->hasAnyRole(['Admin', 'Super_Admin']);
+    }
+
+    // ── Base visibility query ─────────────────────────────────────────────
+    private function baseQuery(\App\Models\User $user)
+    {
+        $q = DB::table('acm_master');
+
+        if (!$this->isAdmin($user)) {
+            $q->where(function ($inner) use ($user) {
+                $inner->where('created_by', $user->emp_id)
+                      ->orWhere('current_desk_emp_id', $user->emp_id);
+
+                // PO users can also see all closed matrices for their PO code
+                if ($user->isPo() && $user->po_code) {
+                    $inner->orWhere(function ($q2) use ($user) {
+                        $q2->where('po_code', $user->po_code)
+                           ->where('status', 'CLOSED');
+                    });
+                }
+            });
+        }
+
+        return $q;
+    }
+
     /**
      * Stat card counts for the index page header.
      * Four lightweight COUNT queries — no full collection load.
      */
     public function getStatCounts(\App\Models\User $user): array
     {
-        $base = DB::table('acm_master')
-            ->where(function ($q) use ($user) {
-                $q->where('created_by', $user->emp_id)
-                  ->orWhere('current_desk_emp_id', $user->emp_id);
-
-                // PO users can also see all closed matrices for their PO code
-                if ($user->isPo() && $user->po_code) {
-                    $q->orWhere(function ($q2) use ($user) {
-                        $q2->where('po_code', $user->po_code)
-                           ->where('status', 'CLOSED');
-                    });
-                }
-            });
+        $base = $this->baseQuery($user);
 
         return [
             'total'          => (clone $base)->count(),
@@ -45,20 +62,10 @@ class ActionMatrixService
     public function getMatricesTableData(array $dtParams, array $filters, \App\Models\User $user): array
     {
         // ── Base visibility query ─────────────────────────────────────────
+        // Admin/Super_Admin: all matrices.
         // PKSF: matrices they created or that are currently at their desk.
         // PO  : same + all CLOSED matrices for their PO code (read-only archive).
-        $base = DB::table('acm_master')
-            ->where(function ($q) use ($user) {
-                $q->where('created_by', $user->emp_id)
-                  ->orWhere('current_desk_emp_id', $user->emp_id);
-
-                if ($user->isPo() && $user->po_code) {
-                    $q->orWhere(function ($q2) use ($user) {
-                        $q2->where('po_code', $user->po_code)
-                           ->where('status', 'CLOSED');
-                    });
-                }
-            });
+        $base = $this->baseQuery($user);
 
         // ── View filter (Dropdown 1) ──────────────────────────────────────
         switch ($filters['view'] ?? 'all') {
@@ -189,16 +196,7 @@ class ActionMatrixService
 
         return [
             'draw'            => (int)($dtParams['draw'] ?? 1),
-            'recordsTotal'    => (clone DB::table('acm_master')->where(function ($q) use ($user) {
-                                    $q->where('created_by', $user->emp_id)
-                                      ->orWhere('current_desk_emp_id', $user->emp_id);
-                                    if ($user->isPo() && $user->po_code) {
-                                        $q->orWhere(function ($q2) use ($user) {
-                                            $q2->where('po_code', $user->po_code)
-                                               ->where('status', 'CLOSED');
-                                        });
-                                    }
-                                 }))->count(),
+            'recordsTotal'    => $this->baseQuery($user)->count(),
             'recordsFiltered' => $recordsFiltered,
             'data'            => $data,
         ];
@@ -793,8 +791,72 @@ class ActionMatrixService
                 throw new \Exception('No supervisor assigned to your profile. Cannot request revision.');
             }
 
-            // 1. Store the comment
-            $this->storeComment($data, $user);
+            // 0. Delete any existing attachments the user flagged for removal
+            //    (only relevant when re-submitting at PKSF_REJECTED with prev_comment_sl)
+            $removeIds = array_filter(array_map('intval', $data['remove_file_ids'] ?? []));
+            $prevSl    = (int) ($data['prev_comment_sl'] ?? 0);
+            if (!empty($removeIds) && $prevSl > 0) {
+                $filesToRemove = DB::table('acm_comments_file_attachment')
+                    ->where('acm_id', $acmId)
+                    ->where('sl', $prevSl)
+                    ->whereIn('file_id', $removeIds)
+                    ->get();
+                foreach ($filesToRemove as $f) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($f->file_path);
+                }
+                DB::table('acm_comments_file_attachment')
+                    ->where('acm_id', $acmId)
+                    ->where('sl', $prevSl)
+                    ->whereIn('file_id', $removeIds)
+                    ->delete();
+            }
+
+            // 1. Save the comment
+            //    PKSF_REJECTED re-submission (prev_comment_sl > 0): UPDATE existing row.
+            //    Fresh submission (prev_comment_sl = 0): INSERT new row via storeComment().
+            if ($prevSl > 0) {
+                // Update the text of the existing comment
+                DB::table('acm_comments')
+                    ->where('acm_id', $acmId)
+                    ->where('sl', $prevSl)
+                    ->update([
+                        'comment_detail' => $data['comment_detail'],
+                        'is_draft'       => 0,
+                        'updated_by'     => $user->emp_id,
+                        'updated_at'     => now(),
+                    ]);
+
+                // Append any newly uploaded files to the same sl
+                $newFiles = $data['attachments'] ?? [];
+                if (!empty($newFiles)) {
+                    $maxFileId = DB::table('acm_comments_file_attachment')
+                        ->where('acm_id', $acmId)
+                        ->where('sl', $prevSl)
+                        ->max('file_id') ?? 0;
+
+                    foreach (array_values($newFiles) as $idx => $file) {
+                        if (!$file instanceof \Illuminate\Http\UploadedFile) continue;
+                        $fileName = time() . '_' . $file->getClientOriginalName();
+                        $filePath = $file->storeAs('acm_comments/' . $acmId, $fileName, 'public');
+
+                        DB::table('acm_comments_file_attachment')->insert([
+                            'acm_id'         => $acmId,
+                            'sl'             => $prevSl,
+                            'file_id'        => $maxFileId + $idx + 1,
+                            'file_upload_by' => $user->emp_type,
+                            'file_name'      => $file->getClientOriginalName(),
+                            'file_path'      => $filePath,
+                            'file_type'      => $file->getClientMimeType(),
+                            'file_size'      => $file->getSize(),
+                            'created_by'     => $user->emp_id,
+                            'created_at'     => now(),
+                        ]);
+                    }
+                }
+            } else {
+                // Fresh submission — insert a new comment row
+                $this->storeComment($data, $user);
+            }
 
             // 2. Update Master
             $master->update([

@@ -613,6 +613,64 @@ class ActionMatrixController extends Controller
         }
     }
 
+    /**
+     * GET — fetch the last PKSF CO comment + supervisor's rejection remark
+     * for the Update Comment modal (PKSF_REJECTED stage only).
+     */
+    public function getPksfComment(string $acmId): \Illuminate\Http\JsonResponse
+    {
+        $user   = auth()->user();
+        $master = \App\Models\AcmMaster::where('acm_id', $acmId)->firstOrFail();
+
+        abort_unless(
+            $user->isPksf()
+            && $master->created_by          === $user->emp_id
+            && $master->current_desk_emp_id === $user->emp_id
+            && $master->status              === 'PKSF_REJECTED',
+            403
+        );
+
+        // Last comment written by this PKSF CO on this matrix
+        $comment = \Illuminate\Support\Facades\DB::table('acm_comments')
+            ->where('acm_id', $acmId)
+            ->where('created_by', $user->emp_id)
+            ->orderByDesc('sl')
+            ->first();
+
+        // Supervisor's last rejection remark (closure or revision rejection)
+        $movement = \Illuminate\Support\Facades\DB::table('acm_pksf_movements')
+            ->where('acm_id', $acmId)
+            ->whereIn('action_type', ['CLOSURE_REJECTED', 'REVISION_REJECTED'])
+            ->orderByDesc('sl')
+            ->first();
+
+        $supervisorName = null;
+        if ($movement) {
+            $supervisorName = \Illuminate\Support\Facades\DB::table('users')
+                ->where('emp_id', $movement->from_emp_id)
+                ->value('name');
+        }
+
+        // Existing file attachments for this comment
+        $attachments = [];
+        if ($comment) {
+            $attachments = \Illuminate\Support\Facades\DB::table('acm_comments_file_attachment')
+                ->where('acm_id', $acmId)
+                ->where('sl', $comment->sl)
+                ->select('file_id', 'file_name', 'file_path')
+                ->get()
+                ->toArray();
+        }
+
+        return response()->json([
+            'comment_sl'        => $comment?->sl,
+            'comment_detail'    => $comment?->comment_detail ?? '',
+            'supervisor_remark' => $movement?->remarks ?? '',
+            'supervisor_name'   => $supervisorName ?? 'Supervisor',
+            'attachments'       => $attachments,
+        ]);
+    }
+
     protected function canEditMatrix(\App\Models\AcmMaster $master): bool
     {
         $user = auth()->user();

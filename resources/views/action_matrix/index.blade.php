@@ -104,6 +104,9 @@
         <div class="card-body p-0">
             <!-- Filter Bar -->
             <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
+                <i class="bi bi-funnel text-primary me-1" style="font-size:1.1rem;"></i>
+                <strong style="font-size:.875rem;color:#37474f;margin-right:.25rem;">Filters:</strong>
+
                 {{-- Dropdown 1: View --}}
                 <select id="filterView" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:170px;">
                     <option value="all">All Matrices</option>
@@ -432,7 +435,7 @@
     </div>
 </div>
 <div class="modal fade" id="poReviewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:620px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-warning text-dark p-4">
                 <h5 class="modal-title fw-bold">Review PO Response</h5>
@@ -452,16 +455,14 @@
                         <textarea class="form-control" id="po_review_remarks" name="remarks" rows="4" placeholder="Enter remarks for approval or sending back to officer..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer bg-light p-3 d-flex justify-content-between">
-                    <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <div class="d-flex gap-2">
-                        <button type="button" id="btnPoReject" class="btn btn-outline-danger px-4 rounded-pill">
-                            <i class="bi bi-x-circle me-1"></i>Send Back to Officer
-                        </button>
-                        <button type="button" id="btnPoApprove" class="btn btn-success px-4 rounded-pill">
-                            <i class="bi bi-check-all me-1"></i>Approve & Send to PKSF
-                        </button>
-                    </div>
+                <div class="modal-footer bg-light p-3 d-flex justify-content-end gap-2 flex-nowrap">
+                    <button type="button" class="btn btn-light px-3 rounded-pill text-nowrap" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="btnPoReject" class="btn btn-outline-danger px-3 rounded-pill text-nowrap">
+                        <i class="bi bi-x-circle me-1"></i>Send Back to Officer
+                    </button>
+                    <button type="button" id="btnPoApprove" class="btn btn-success px-3 rounded-pill text-nowrap">
+                        <i class="bi bi-check-all me-1"></i>Approve & Send to PKSF
+                    </button>
                 </div>
             </form>
         </div>
@@ -569,7 +570,16 @@
                 @csrf
                 <div class="modal-body p-4">
                     <input type="hidden" name="acm_id" id="pksf_revision_acm_id">
-                    
+                    <input type="hidden" name="prev_comment_sl" id="pksf_revision_prev_sl" value="">
+
+                    <!-- Supervisor's rejection feedback — shown only when status is PKSF_REJECTED -->
+                    <div id="pksfRevSupContext" class="mb-4 p-3 rounded-3" style="display:none;background:#fffbeb;border-left:4px solid #ffc107;">
+                        <div class="small fw-bold text-uppercase mb-2" style="font-size:.67rem;letter-spacing:.08em;color:#92400e;">
+                            <i class="bi bi-chat-left-quote me-1"></i><span id="pksfRevSupName">Supervisor's Feedback</span>
+                        </div>
+                        <div id="pksfRevSupRemarkText" style="font-size:.875rem;color:#78350f;line-height:1.65;white-space:pre-line;"></div>
+                    </div>
+
                     <div class="alert alert-warning border-0 shadow-none smaller mb-4">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>You are not satisfied with the PO response. Please detail what requires revision. Your request will be forwarded to your supervisor for review before going to the PO.
                     </div>
@@ -593,13 +603,29 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold">Attachments (Max 3 files)</label>
+                        <label class="form-label fw-bold">Attachments</label>
+
+                        <!-- Previously attached files — shown only at PKSF_REJECTED -->
+                        <div id="pksfRevExistingFilesSection" style="display:none;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold text-muted text-uppercase" style="font-size:.68rem;letter-spacing:.06em;">
+                                    <i class="bi bi-paperclip me-1"></i>Previously Attached
+                                </span>
+                                <span class="small text-muted" style="font-size:.72rem;">Click × to remove</span>
+                            </div>
+                            <div id="pksfRevExistingFiles" class="mb-3"></div>
+                        </div>
+
+                        <!-- New file inputs -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small text-muted" style="font-size:.75rem;">Add new files (Max 3 total)</span>
+                        </div>
                         <div class="row g-2" id="pksfRevisionAttachmentContainer">
                             <div class="col-12">
                                 <input type="file" name="attachments[]" class="form-control mb-2">
                             </div>
                         </div>
-                        <button type="button" id="btnPksfAddMoreRevisionFile" class="btn btn-sm btn-outline-secondary rounded-pill">
+                        <button type="button" id="btnPksfAddMoreRevisionFile" class="btn btn-sm btn-outline-secondary rounded-pill mt-1" style="display:none;">
                             <i class="bi bi-plus-circle me-1"></i>Add Another File
                         </button>
                     </div>
@@ -655,7 +681,7 @@
 
 <!-- PKSF Review Revision Modal (Supervisor) -->
 <div class="modal fade" id="pksfReviewRevisionModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:620px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-warning text-dark p-4">
                 <h5 class="modal-title fw-bold">Review Revision Request</h5>
@@ -675,16 +701,14 @@
                         <textarea class="form-control" id="pksf_review_revision_remarks" name="remarks" rows="4" placeholder="Enter remarks for forwarding this request to PO or sending it back to your officer..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer bg-light p-3 d-flex justify-content-between">
-                    <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <div class="d-flex gap-2">
-                        <button type="button" id="btnPksfRejectRevision" class="btn btn-outline-danger px-4 rounded-pill">
-                            <i class="bi bi-arrow-left-circle me-1"></i>Send Back to Officer
-                        </button>
-                        <button type="button" id="btnPksfApproveRevision" class="btn btn-warning px-4 rounded-pill">
-                            <i class="bi bi-send-check me-1"></i>Approve & Forward to PO
-                        </button>
-                    </div>
+                <div class="modal-footer bg-light p-3 d-flex justify-content-end gap-2 flex-nowrap">
+                    <button type="button" class="btn btn-light px-3 rounded-pill text-nowrap" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="btnPksfRejectRevision" class="btn btn-outline-danger px-3 rounded-pill text-nowrap">
+                        <i class="bi bi-arrow-left-circle me-1"></i>Send Back to Officer
+                    </button>
+                    <button type="button" id="btnPksfApproveRevision" class="btn btn-warning px-3 rounded-pill text-nowrap">
+                        <i class="bi bi-send-check me-1"></i>Approve & Forward to PO
+                    </button>
                 </div>
             </form>
         </div>
@@ -791,135 +815,138 @@
     .btn-white:hover { background: #f8f9fa; }
 
     /* =====================================================
-       PO Comment Modal — Scoped Styles
+       PO Comment Modal — Scoped Styles  [Slate & Clean White]
     ====================================================== */
     .po-comment-dialog { max-width: 580px; }
     .po-comment-modal {
-        box-shadow: 0 24px 60px rgba(27, 58, 58, 0.18) !important;
-        border-radius: 16px !important;
+        box-shadow: 0 20px 50px rgba(45,55,72,0.22) !important;
+        border-radius: 14px !important;
+        border: none !important;
     }
 
-    /* Header */
+    /* ── Header ──────────────────────────────────────────── */
     .po-cm-header {
-        background: linear-gradient(135deg, #1b3a3a 0%, #2e5454 100%);
+        background: #2d3748;
+        border-radius: 14px 14px 0 0;
     }
     .po-cm-kicker {
-        font-size: 0.68rem;
-        font-weight: 900;
+        font-size: 0.67rem;
+        font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: rgba(255,255,255,0.6);
+        color: rgba(255,255,255,0.5);
         display: block;
     }
     .po-cm-title {
-        font-size: 1.2rem;
-        font-weight: 800;
-        color: #fff;
-        letter-spacing: -0.2px;
-        line-height: 1.2;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: -0.1px;
+        line-height: 1.25;
     }
     .po-cm-meta-chip {
-        background: rgba(255,255,255,0.12);
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 999px;
-        color: rgba(255,255,255,0.88);
-        font-size: 0.73rem;
-        font-weight: 700;
-        padding: 4px 10px;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 6px;
+        color: rgba(255,255,255,0.82);
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 3px 9px;
         display: inline-flex;
         align-items: center;
         gap: 4px;
     }
-    .po-cm-chip-high   { background: rgba(220,53,69,0.35)  !important; border-color: rgba(220,53,69,0.5) !important; }
-    .po-cm-chip-medium { background: rgba(255,193,7,0.28)  !important; border-color: rgba(255,193,7,0.45) !important; color: #ffd85c !important; }
-    .po-cm-chip-low    { background: rgba(13,202,240,0.22) !important; border-color: rgba(13,202,240,0.4) !important; }
+    .po-cm-chip-high   { background: rgba(252,129,74,0.25) !important; border-color: rgba(252,129,74,0.4) !important; color: #fca97e !important; }
+    .po-cm-chip-medium { background: rgba(236,201,75,0.2)  !important; border-color: rgba(236,201,75,0.35) !important; color: #f0d070 !important; }
+    .po-cm-chip-low    { background: rgba(104,211,145,0.2) !important; border-color: rgba(104,211,145,0.35) !important; color: #9ae6b4 !important; }
 
-    /* Context section */
+    /* ── Context section ─────────────────────────────────── */
     .po-cm-context {
-        background: #f2f7f6;
-        border-bottom: 1px solid #dce8e6;
+        background: #f7f8fa;
+        border-bottom: 1px solid #e8eaed;
     }
     .po-cm-context-label {
-        font-size: 0.68rem;
-        font-weight: 900;
+        font-size: 0.67rem;
+        font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #1b3a3a;
-        opacity: 0.55;
+        color: #718096;
         margin-bottom: 8px;
     }
     .po-cm-obs-text {
-        font-size: 0.88rem;
-        color: #2a3e3e;
+        font-size: 0.875rem;
+        color: #2d3748;
         line-height: 1.65;
-        border-left: 3px solid #1b3a3a;
-        padding-left: 14px;
+        border-left: 3px solid #2d3748;
+        padding-left: 12px;
         max-height: 90px;
         overflow-y: auto;
         white-space: pre-line;
         scrollbar-width: thin;
     }
     .po-cm-obs-text::-webkit-scrollbar { width: 4px; }
-    .po-cm-obs-text::-webkit-scrollbar-thumb { background: #b0c8c4; border-radius: 4px; }
+    .po-cm-obs-text::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
 
-    /* Labels */
+    /* ── Labels ──────────────────────────────────────────── */
     .po-cm-label {
-        font-weight: 800;
-        font-size: 0.85rem;
-        color: #1c2929;
+        font-weight: 700;
+        font-size: 0.84rem;
+        color: #2d3748;
         display: flex;
         align-items: center;
         margin-bottom: 8px;
     }
     .po-cm-label-hint {
-        font-size: 0.76rem;
-        color: #7d9494;
+        font-size: 0.75rem;
+        color: #a0aec0;
     }
 
-    /* Textarea */
+    /* ── Textarea ────────────────────────────────────────── */
     .po-cm-textarea {
-        border: 1.5px solid #cfdede;
-        border-radius: 10px;
-        font-size: 0.92rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.9rem;
         line-height: 1.65;
         resize: vertical;
-        color: #1c2929;
+        color: #2d3748;
+        background: #ffffff;
         transition: border-color 0.18s, box-shadow 0.18s;
     }
     .po-cm-textarea:focus {
-        border-color: #1b3a3a;
-        box-shadow: 0 0 0 3px rgba(27,58,58,0.1);
+        border-color: #2d3748;
+        box-shadow: 0 0 0 3px rgba(45,55,72,0.1);
+        outline: none;
     }
-    .po-cm-textarea.is-invalid { border-color: #dc3545 !important; }
+    .po-cm-textarea.is-invalid { border-color: #e53e3e !important; }
     .po-cm-field-hint {
-        font-size: 0.75rem;
-        color: #7d9494;
+        font-size: 0.74rem;
+        color: #a0aec0;
         flex: 1;
     }
     .po-cm-charcount {
-        font-size: 0.75rem;
-        color: #9aadad;
+        font-size: 0.74rem;
+        color: #b0bec5;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
         margin-left: 10px;
     }
 
-    /* File count badge */
+    /* ── File count badge ────────────────────────────────── */
     .po-cm-file-count-badge {
-        font-size: 0.76rem;
-        font-weight: 800;
-        color: #1b3a3a;
-        background: #e8f2f0;
-        border: 1px solid #c4dbd8;
-        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: #4a5568;
+        background: #edf2f7;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
         padding: 3px 10px;
     }
 
-    /* Upload zone */
+    /* ── Upload zone ─────────────────────────────────────── */
     .po-cm-upload-zone {
-        border: 2px dashed #bdd2d0;
-        border-radius: 12px;
-        background: #f8fbfa;
+        border: 1.5px dashed #cbd5e0;
+        border-radius: 10px;
+        background: #f7f8fa;
         padding: 20px;
         cursor: pointer;
         transition: border-color 0.18s, background 0.18s;
@@ -927,14 +954,14 @@
     }
     .po-cm-upload-zone:hover:not(.cm-zone-full),
     .po-cm-upload-zone.cm-drag-over {
-        border-color: #1b3a3a;
-        background: rgba(27,58,58,0.04);
+        border-color: #2d3748;
+        background: #edf2f7;
     }
     .po-cm-upload-zone.cm-zone-full {
         cursor: default;
         border-style: solid;
-        border-color: #a8c8c4;
-        background: #eef6f4;
+        border-color: #bee3f8;
+        background: #ebf8ff;
     }
 
     /* Upload prompt */
@@ -944,72 +971,61 @@
         align-items: center;
         gap: 6px;
         text-align: center;
-        padding: 6px 0;
+        padding: 4px 0;
         pointer-events: none;
     }
     .po-cm-upload-icon-wrap {
-        width: 46px;
-        height: 46px;
-        background: rgba(27,58,58,0.09);
-        border-radius: 12px;
+        width: 44px;
+        height: 44px;
+        background: #e2e8f0;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.45rem;
-        color: #1b3a3a;
+        font-size: 1.4rem;
+        color: #4a5568;
         margin-bottom: 2px;
     }
     .po-cm-upload-action {
         font-weight: 700;
-        color: #1b3a3a;
+        color: #2d3748;
         text-decoration: underline;
         text-underline-offset: 2px;
     }
-    .po-cm-upload-or { color: #5a7474; }
-    .po-cm-upload-types {
-        font-size: 0.74rem;
-        color: #8ea6a6;
-    }
+    .po-cm-upload-or { color: #718096; font-size: 0.85rem; }
+    .po-cm-upload-types { font-size: 0.73rem; color: #a0aec0; }
 
-    /* File pills */
+    /* ── File pills ──────────────────────────────────────── */
     .po-cm-file-pill {
         display: flex;
         align-items: center;
         gap: 10px;
-        background: #fff;
-        border: 1px solid #d2e2e0;
-        border-radius: 10px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
-        transition: border-color 0.15s;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 9px 13px;
+        margin-bottom: 7px;
+        transition: border-color 0.15s, box-shadow 0.15s;
     }
+    .po-cm-file-pill:hover { border-color: #cbd5e0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
     .po-cm-file-pill:last-child { margin-bottom: 0; }
-    .po-cm-file-pill-icon {
-        color: #1b3a3a;
-        font-size: 1.05rem;
-        flex: 0 0 auto;
-    }
+    .po-cm-file-pill-icon { color: #4a5568; font-size: 1.05rem; flex: 0 0 auto; }
     .po-cm-file-pill-name {
         flex: 1;
         min-width: 0;
         font-size: 0.84rem;
         font-weight: 600;
-        color: #1c2929;
+        color: #2d3748;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-    .po-cm-file-pill-size {
-        font-size: 0.73rem;
-        color: #7d9090;
-        flex: 0 0 auto;
-        white-space: nowrap;
-    }
+    .po-cm-file-pill-size { font-size: 0.72rem; color: #a0aec0; flex: 0 0 auto; white-space: nowrap; }
     .po-cm-file-pill-remove {
-        background: #f0f5f5;
-        border: 1px solid #d2e2e0;
+        background: #f7f8fa;
+        border: 1px solid #e2e8f0;
         border-radius: 50%;
-        color: #5a7070;
+        color: #a0aec0;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -1021,127 +1037,111 @@
         line-height: 1;
         transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .po-cm-file-pill-remove:hover {
-        background: #fde8e8;
-        border-color: #f5c6c6;
-        color: #c0392b;
-    }
+    .po-cm-file-pill-remove:hover { background: #fff5f5; border-color: #fed7d7; color: #e53e3e; }
 
-    /* Add another file button */
+    /* ── Add another file button ─────────────────────────── */
     .po-cm-btn-add-file {
         font-size: 0.8rem;
         font-weight: 600;
-        color: #1b3a3a;
+        color: #4a5568;
         background: transparent;
-        border: 1.5px dashed #8ab4b0;
-        border-radius: 999px;
-        padding: 5px 16px;
+        border: 1.5px dashed #cbd5e0;
+        border-radius: 8px;
+        padding: 6px 16px;
         transition: all 0.15s;
         cursor: pointer;
     }
     .po-cm-btn-add-file:hover {
-        background: rgba(27,58,58,0.06);
-        border-color: #1b3a3a;
-        border-style: solid;
-        color: #1b3a3a;
+        background: #edf2f7;
+        border-color: #2d3748;
+        border-style: dashed;
+        color: #2d3748;
     }
 
-    /* Routing card */
+    /* ── Routing card ────────────────────────────────────── */
     .po-cm-routing-card {
-        border: 1.5px solid #d0e0de;
-        border-radius: 12px;
-        background: #f6faf9;
-        padding: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f7f8fa;
+        padding: 14px 16px;
     }
-    .po-cm-routing-inner {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
+    .po-cm-routing-inner { display: flex; align-items: center; gap: 12px; }
     .po-cm-supervisor-avatar {
-        width: 42px;
-        height: 42px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #1b3a3a, #2e5454);
-        color: #fff;
-        font-size: 0.9rem;
-        font-weight: 800;
+        background: #2d3748;
+        color: #ffffff;
+        font-size: 0.88rem;
+        font-weight: 700;
         display: flex;
         align-items: center;
         justify-content: center;
         flex: 0 0 auto;
-        box-shadow: 0 3px 8px rgba(27,58,58,0.25);
+        box-shadow: 0 2px 6px rgba(45,55,72,0.25);
     }
-    .po-cm-routing-info {
-        flex: 1;
-        min-width: 0;
-    }
+    .po-cm-routing-info { flex: 1; min-width: 0; }
     .po-cm-routing-name {
         font-weight: 700;
-        font-size: 0.9rem;
-        color: #1c2929;
+        font-size: 0.88rem;
+        color: #2d3748;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .po-cm-routing-role {
-        font-size: 0.75rem;
-        color: #6d8484;
-        margin-top: 2px;
-    }
+    .po-cm-routing-role { font-size: 0.74rem; color: #718096; margin-top: 2px; }
     .po-cm-routing-status-badge {
         flex: 0 0 auto;
-        font-size: 0.73rem;
+        font-size: 0.72rem;
         font-weight: 700;
-        border-radius: 999px;
-        padding: 5px 11px;
+        border-radius: 6px;
+        padding: 4px 10px;
         display: inline-flex;
         align-items: center;
     }
-    .po-cm-badge-assigned {
-        background: rgba(25,135,84,0.1);
-        color: #19a065;
-        border: 1px solid rgba(25,135,84,0.25);
-    }
-    .po-cm-badge-warn {
-        background: rgba(220,53,69,0.08);
-        color: #c0392b;
-        border: 1px solid rgba(220,53,69,0.2);
-    }
+    .po-cm-badge-assigned { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+    .po-cm-badge-warn     { background: #fffaf0; color: #975a16; border: 1px solid #feebc8; }
 
-    /* Footer */
+    /* ── Footer ──────────────────────────────────────────── */
     .po-cm-footer {
-        background: #f4f8f7;
-        border-top: 1px solid #dce8e6 !important;
+        background: #f7f8fa;
+        border-top: 1px solid #e8eaed !important;
+        border-radius: 0 0 14px 14px;
     }
+    /* Cancel — neutral, dismissive */
     .po-cm-btn-cancel {
-        color: #5a7070;
-        background: #fff;
-        border: 1px solid #cddcda;
+        color: #718096;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         font-weight: 600;
+        font-size: 0.875rem;
     }
-    .po-cm-btn-cancel:hover { background: #eef4f3; border-color: #b0cbc8; }
+    .po-cm-btn-cancel:hover { background: #f7fafc; border-color: #cbd5e0; color: #4a5568; }
 
+    /* Save Draft — amber, "not final yet" */
     .po-cm-btn-draft {
-        color: #1b3a3a;
-        background: #fff;
-        border: 1.5px solid #1b3a3a;
+        color: #92400e;
+        background: #fffbeb;
+        border: 1.5px solid #f6d860;
         font-weight: 700;
+        font-size: 0.875rem;
     }
-    .po-cm-btn-draft:hover { background: rgba(27,58,58,0.06); color: #1b3a3a; }
+    .po-cm-btn-draft:hover { background: #fef3c7; border-color: #d97706; color: #78350f; }
 
+    /* Submit to Supervisor — blue, primary action */
     .po-cm-btn-forward {
-        background: linear-gradient(135deg, #1b3a3a 0%, #2e5454 100%);
-        color: #fff;
+        background: #2b6cb0;
+        color: #ffffff;
         border: none;
         font-weight: 700;
-        box-shadow: 0 4px 12px rgba(27,58,58,0.28);
-        transition: opacity 0.15s, box-shadow 0.15s;
+        font-size: 0.875rem;
+        box-shadow: 0 2px 8px rgba(43,108,176,0.3);
+        transition: background 0.15s, box-shadow 0.15s;
     }
     .po-cm-btn-forward:hover:not(:disabled) {
-        opacity: 0.9;
-        color: #fff;
-        box-shadow: 0 6px 16px rgba(27,58,58,0.35);
+        background: #2c5282;
+        color: #ffffff;
+        box-shadow: 0 4px 14px rgba(43,108,176,0.4);
     }
     .po-cm-btn-forward:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>
@@ -1212,14 +1212,14 @@
 
             /* ── PKSF-side buttons ── */
             if (AUTH.isPksf) {
-                // Edit draft / returned matrix
-                if (myMatrix && myDesk && ['SAVED','REJECTED','PKSF_REJECTED'].includes(s)) {
+                // Edit draft / returned matrix (SAVED or REJECTED only — not PKSF_REJECTED)
+                if (myMatrix && myDesk && ['SAVED','REJECTED'].includes(s)) {
                     btns += `<a href="/action-matrix/${id}/edit"
                                 class="btn btn-sm btn-outline-secondary rounded-pill me-1"
                                 title="Edit"><i class="bi bi-pencil me-1"></i>Edit</a>`;
                 }
                 // Forward to PKSF supervisor
-                if (myMatrix && myDesk && s === 'SAVED') {
+                if (myMatrix && myDesk && ['SAVED', 'REJECTED'].includes(s)) {
                     btns += `<button class="btn btn-sm btn-outline-primary rounded-pill me-1 btn-forward-matrix"
                                      data-acmid="${id}" title="Forward to Supervisor">
                                 <i class="bi bi-send me-1"></i>Forward</button>`;
@@ -1236,7 +1236,16 @@
                                      data-acmid="${id}" title="Request Closure">
                                 <i class="bi bi-check-circle-fill me-1"></i>Closure</button>
                              <button class="btn btn-sm btn-outline-warning rounded-pill me-1 btn-pksf-request-revision"
-                                     data-acmid="${id}" title="Request Revision">
+                                     data-acmid="${id}" data-status="${s}" title="Request Revision">
+                                <i class="bi bi-arrow-repeat me-1"></i>Revision</button>`;
+                }
+                // PKSF CO: supervisor rejected closure/revision — re-request with updated comment
+                if (myMatrix && myDesk && s === 'PKSF_REJECTED') {
+                    btns += `<button class="btn btn-sm btn-outline-success rounded-pill me-1 btn-pksf-request-closure"
+                                     data-acmid="${id}" title="Request Closure">
+                                <i class="bi bi-check-circle-fill me-1"></i>Closure</button>
+                             <button class="btn btn-sm btn-outline-warning rounded-pill me-1 btn-pksf-request-revision"
+                                     data-acmid="${id}" data-status="${s}" title="Request Revision">
                                 <i class="bi bi-arrow-repeat me-1"></i>Revision</button>`;
                 }
                 // PKSF Supervisor: approve/reject closure request
@@ -1718,27 +1727,141 @@
         });
 
         // PKSF Concern Officer Request Revision Modal
+        let pksfRevRemovedIds = []; // tracks existing file_ids the user wants to delete
+        let pksfFileCount     = 1;  // number of new-file input rows currently in the form
+
+        // Show "Add Another File" only when ≥1 file is present AND cap not reached
+        function pksfRevSyncAddMoreBtn() {
+            const existingPills = $('#pksfRevExistingFiles .pksf-rev-existing-pill').length;
+            let filledInputs = 0;
+            $('#pksfRevisionAttachmentContainer input[type="file"]').each(function() {
+                if (this.files && this.files.length > 0) filledInputs++;
+            });
+            const hasFile = (existingPills + filledInputs) >= 1;
+            $('#btnPksfAddMoreRevisionFile').toggle(hasFile && pksfFileCount < 3);
+        }
+
         $('#matrixTable').on('click', '.btn-pksf-request-revision', function() {
-            const acmId = $(this).attr('data-acmid');
+            const acmId  = $(this).attr('data-acmid');
+            const status = $(this).data('status') || 'PO_APPROVED';
+
+            // Reset all fields
             $('#pksf_revision_acm_id').val(acmId);
+            $('#pksf_revision_prev_sl').val('');
             $('#pksf_revision_detail').val('');
-            
-            // reset file inputs
+            pksfRevRemovedIds = [];
+
+            // Reset existing-files section
+            $('#pksfRevExistingFiles').empty();
+            $('#pksfRevExistingFilesSection').hide();
+
+            // Reset new file inputs
             $('#pksfRevisionAttachmentContainer').html('<div class="col-12"><input type="file" name="attachments[]" class="form-control mb-2"></div>');
             pksfFileCount = 1;
-            $('#btnPksfAddMoreRevisionFile').show();
+            pksfRevSyncAddMoreBtn(); // evaluates to hidden (no files present yet)
+
+            // Hide supervisor context until populated
+            $('#pksfRevSupContext').hide();
+            $('#pksfRevSupRemarkText').text('');
+            $('#pksfRevSupName').text("Supervisor's Feedback");
 
             const modal = new bootstrap.Modal(document.getElementById('pksfRequestRevisionModal'));
             modal.show();
+
+            // PKSF_REJECTED: pre-fill comment + show supervisor feedback + render existing files
+            if (status === 'PKSF_REJECTED') {
+                $.getJSON(`/action-matrix/${encodeURIComponent(acmId)}/pksf-comment`)
+                    .done(function (data) {
+                        // Pre-fill textarea with the existing PKSF CO comment
+                        if (data.comment_detail) {
+                            $('#pksf_revision_detail').val(data.comment_detail);
+                        }
+
+                        // Store the previous comment's sl so the backend can delete removed files
+                        if (data.comment_sl) {
+                            $('#pksf_revision_prev_sl').val(data.comment_sl);
+                        }
+
+                        // Show supervisor's rejection remark for context
+                        if (data.supervisor_remark) {
+                            const nameLabel = data.supervisor_name
+                                ? `Supervisor's Feedback (${escHtml(data.supervisor_name)})`
+                                : "Supervisor's Feedback";
+                            $('#pksfRevSupName').text(nameLabel);
+                            $('#pksfRevSupRemarkText').text(data.supervisor_remark);
+                            $('#pksfRevSupContext').show();
+                        }
+
+                        // Render previously attached files as removable pills
+                        if (data.attachments && data.attachments.length > 0) {
+                            let html = '';
+                            data.attachments.forEach(function(f) {
+                                html += `<div class="d-flex align-items-center gap-2 mb-2 p-2 pksf-rev-existing-pill"
+                                              style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;" data-fileid="${f.file_id}">
+                                            <i class="bi bi-paperclip" style="color:#4a5568;font-size:1rem;flex:0 0 auto;"></i>
+                                            <span style="flex:1;min-width:0;font-size:.83rem;font-weight:600;color:#2d3748;
+                                                         overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                                                  title="${escAttr(f.file_name)}">${escHtml(f.file_name)}</span>
+                                            <button type="button" class="pksf-rev-existing-remove"
+                                                    style="background:#f7f8fa;border:1px solid #e2e8f0;border-radius:50%;
+                                                           color:#a0aec0;cursor:pointer;width:24px;height:24px;
+                                                           display:flex;align-items:center;justify-content:center;
+                                                           padding:0;flex:0 0 auto;line-height:1;"
+                                                    data-fileid="${f.file_id}" title="Remove file">
+                                                <i class="bi bi-x" style="font-size:.8rem;"></i>
+                                            </button>
+                                        </div>`;
+                            });
+                            $('#pksfRevExistingFiles').html(html);
+                            $('#pksfRevExistingFilesSection').show();
+                            pksfRevSyncAddMoreBtn(); // files present → show the add-more button
+                        }
+                    })
+                    .fail(function () {
+                        // Non-critical — modal still works without pre-fill
+                        console.warn('[RevisionModal] Could not load existing comment for PKSF_REJECTED.');
+                    });
+            }
         });
 
-        // PKSF Revision Add More File Logic
-        let pksfFileCount = 1;
+        // Remove an existing attached file pill (mark for deletion on submit)
+        $(document).on('click', '.pksf-rev-existing-remove', function() {
+            const fileId = parseInt($(this).data('fileid'));
+            if (!pksfRevRemovedIds.includes(fileId)) {
+                pksfRevRemovedIds.push(fileId);
+            }
+            $(this).closest('.pksf-rev-existing-pill').fadeOut(150, function() {
+                $(this).remove();
+                if ($('#pksfRevExistingFiles .pksf-rev-existing-pill').length === 0) {
+                    $('#pksfRevExistingFilesSection').hide();
+                }
+                pksfRevSyncAddMoreBtn(); // re-evaluate after pill removed
+            });
+        });
+
+        // Inject remove_file_ids[] hidden inputs just before the form submits
+        $('#pksfRequestRevisionForm').on('submit', function() {
+            $(this).find('.pksf-rev-remove-hidden').remove(); // clean stale injections
+            pksfRevRemovedIds.forEach(function(fileId) {
+                $('<input>').attr({
+                    type:  'hidden',
+                    name:  'remove_file_ids[]',
+                    value: fileId,
+                    class: 'pksf-rev-remove-hidden'
+                }).appendTo('#pksfRequestRevisionForm');
+            });
+        });
+
+        // Re-evaluate whenever a file is chosen or cleared in any new-file input
+        $(document).on('change', '#pksfRevisionAttachmentContainer input[type="file"]', function() {
+            pksfRevSyncAddMoreBtn();
+        });
+
         $(document).on('click', '#btnPksfAddMoreRevisionFile', function() {
             if (pksfFileCount < 3) {
                 $('#pksfRevisionAttachmentContainer').append('<div class="col-12"><input type="file" name="attachments[]" class="form-control mb-2"></div>');
                 pksfFileCount++;
-                if (pksfFileCount === 3) $(this).hide();
+                pksfRevSyncAddMoreBtn();
             }
         });
 

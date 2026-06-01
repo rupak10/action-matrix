@@ -14,9 +14,9 @@
                             'active' => request()->routeIs('dashboard') || request()->routeIs('admin.index'),
                         ],
                         [
-                            'label' => 'Analytics',
-                            'url' => '#',
-                            'active' => false,
+                            'label'  => 'Analytics',
+                            'route'  => 'analytics.index',
+                            'active' => request()->routeIs('analytics.*'),
                         ],
                     ],
                 ],

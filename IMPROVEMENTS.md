@@ -110,15 +110,14 @@
 - **Problem:** PKSF management and auditors will want to print or archive a complete matrix record.
 - **Suggestion:** A "Download PDF" button on the show page. The PDF should cover: matrix details, observation, all comments (with author and timestamp), movement history, and attachments list. Use `barryvdh/laravel-dompdf` or `spatie/browsershot`.
 
-### 17. Dashboard with real analytics
-- **Problem:** The current dashboard has no meaningful data. It is essentially an empty shell.
-- **Suggestion:** Add widgets for:
-  - Matrices by status (donut chart)
-  - Matrices by PO code (bar chart — top 10)
-  - Matrices by priority
-  - Average days to first PO response
-  - Overdue count (if deadline tracking is added)
-  - My recent activity feed
+### ~~17. Dashboard with real analytics~~ ✅ Done — 2026-05-28
+- Full analytics page at **Dashboard → Analytics** (`/analytics`).
+- Role-scoped data: Admin/Super_Admin see all; PKSF users see their created matrices; PO users see their own PO only.
+- **5 stat cards:** Total Matrices, Open, Closed, Action Required (at my desk), Avg Days to First Response.
+- **5 charts** (Chart.js 4): Status distribution donut, Priority bar, Observation Category horizontal bar, Monthly 12-month trend line, PO Code top-10 bar (Admin/PKSF only).
+- **2 data tables:** Recently Created (top 8) and Longest Pending (top 8) with animated day-bar.
+- **AJAX filter bar:** Period (1 month → all time) + PO Code dropdown (Admin/PKSF only) — charts and tables refresh without a page reload.
+- Separate `AnalyticsController`, `AnalyticsService`, and `resources/views/analytics/index.blade.php`.
 
 ### 18. Export to Excel from index table
 - **Problem:** No way to extract data for offline reporting or sharing with management.
@@ -174,11 +173,11 @@
 | 11 | Due date + overdue indicator | 4 hrs | Very High | ⬜ Pending |
 | 12 | Authorization middleware | 2 hrs | Critical (Security) | ⬜ Pending |
 | 13 | Email notifications | 4 hrs | Very High | ⬜ Pending |
-| 14 | Dashboard analytics | 1 day | High | ⬜ Pending |
+| 14 | Dashboard analytics | 1 day | High | ✅ Done |
 | 15 | PDF export | 1 day | Medium | ⬜ Pending |
 | 16 | `PKSF_REJECTED` status split | 3 hrs | Medium | ⬜ Pending |
 
 ---
 
 *Document maintained by: Development Team*  
-*Last updated: 2026-05-28*
+*Last updated: 2026-05-28 (Analytics dashboard complete)*

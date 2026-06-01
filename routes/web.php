@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ActionMatrixController;
@@ -7,7 +8,7 @@ use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return redirect()->route('analytics.index');
 })->name('home');
 
 Route::middleware('auth')->group(function () {
@@ -44,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/action-matrix/po-approve', [ActionMatrixController::class, 'approvePoResponse'])->name('action-matrix.po-approve');
     Route::post('/action-matrix/po-reject', [ActionMatrixController::class, 'rejectPoResponse'])->name('action-matrix.po-reject');
     Route::get('/action-matrix/{acm_id}/history', [ActionMatrixController::class, 'getHistory'])->name('action-matrix.history');
+    Route::get('/action-matrix/{acmId}/pksf-comment', [ActionMatrixController::class, 'getPksfComment'])->name('action-matrix.pksf-comment');
     Route::get('/action-matrix/{acmId}/my-draft', [ActionMatrixController::class, 'getMyDraft'])->name('action-matrix.my-draft');
     
     // PKSF Workflow Routes (Closure & Revision)
@@ -55,6 +57,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/action-matrix/reject-revision', [ActionMatrixController::class, 'rejectRevision'])->name('action-matrix.reject-revision');
     
     Route::resource('action-matrix', ActionMatrixController::class);
+
+    // Analytics — authorization handled inside AnalyticsController
+    Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
+    Route::get('/analytics/data', [AnalyticsController::class, 'getData'])->name('analytics.data');
 
     // Reports — authorization handled inside ReportController
     Route::prefix('reports')->name('reports.')->group(function () {

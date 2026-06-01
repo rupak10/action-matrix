@@ -170,7 +170,7 @@
     <div class="admin-shell">
         <aside class="sidebar-panel" id="appSidebar">
             <div class="sidebar-header">
-                <a href="/" class="d-flex align-items-center text-decoration-none">
+                <a href="{{ route('analytics.index') }}" class="d-flex align-items-center text-decoration-none">
                     <div class="bg-sl-primary-soft p-2 rounded-3 me-2">
                         <i class="bi bi-grid-fill text-sl-primary fs-4"></i>
                     </div>
