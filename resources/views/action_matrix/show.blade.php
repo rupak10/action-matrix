@@ -281,7 +281,7 @@
                                             <span class="badge rounded-pill bg-light text-dark border ms-1">{{ $comment->comment_short }}</span>
                                         @endif
                                     </div>
-                                    <time>{{ $formatDateTime($comment->created_at) }}</time>
+                                    <time>{{ $formatDateTime($comment->updated_at) }}</time>
                                 </div>
                                 <p>{{ $comment->comment_detail }}</p>
 

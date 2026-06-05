@@ -12,7 +12,7 @@
                         <span class="fw-bold small">{{ $comment->created_by }}</span>
                         <span class="badge {{ $comment->comment_source === 'PKSF' ? 'bg-primary' : 'bg-warning text-dark' }} ms-2" style="font-size: 0.6rem;">{{ $comment->comment_source }}</span>
                     </div>
-                    <small class="text-muted" style="font-size: 0.7rem;">{{ \Carbon\Carbon::parse($comment->created_at)->format('d M, h:i A') }}</small>
+                    <small class="text-muted" style="font-size: 0.7rem;">{{ \Carbon\Carbon::parse($comment->updated_at)->format('d M, h:i A') }}</small>
                 </div>
                 
                 @if($comment->comment_short)

@@ -1,6 +1,6 @@
 <div class="d-flex align-items-center gap-4">
     <div class="d-none d-xl-block">
-        <h1 class="h5 mb-0 fw-bold text-sl-primary">Hello, {{ explode(' ', auth()->user()->name)[0] }}!</h1>
+        <h1 class="h5 mb-0 fw-bold text-sl-primary">{{ auth()->user()->name }}@if(auth()->user()->designation) <span class="fw-normal text-sl-muted">({{ auth()->user()->designation }})</span>@endif</h1>
         {{-- <p class="mb-0 text-sl-muted smaller">Here's what's happening with your projects today.</p> --}}
     </div>
 

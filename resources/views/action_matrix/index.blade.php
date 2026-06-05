@@ -22,7 +22,7 @@
         return $user ? $user->name . ' (' . $empId . ')' : $empId;
     };
 @endphp
-<div class="container-fluid py-4">
+<div class="container-fluid pt-1 pb-4">
     <!-- Header Section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>

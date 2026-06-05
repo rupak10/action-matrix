@@ -143,13 +143,22 @@ class ActionMatrixController extends Controller
         ])->where('acm_id', $id)->firstOrFail();
 
         $isAdmin = $user->hasAnyRole(['Super_Admin', 'Super Admin', 'Admin']);
+        $isSupervisor = \Illuminate\Support\Facades\DB::table('users')
+            ->where('supervisor_emp_id', $user->emp_id)->exists();
+
         $canView = $isAdmin
             || $master->created_by === $user->emp_id
             || $master->current_desk_emp_id === $user->emp_id
-            // PO users can view any closed matrix for their own PO code
-            || ($user->isPo() && $user->po_code && $master->po_code === $user->po_code && $master->status === 'CLOSED');
+            // PO CO: all closed matrices for their PO code
+            || ($user->isPo() && $user->po_code && $master->po_code === $user->po_code && $master->status === 'CLOSED')
+            // PO Supervisor: all closed matrices for their PO code
+            || ($isSupervisor && $user->isPo() && $user->po_code && $master->po_code === $user->po_code && $master->status === 'CLOSED')
+            // PKSF Supervisor: all closed matrices
+            || ($isSupervisor && $user->isPksf() && $master->status === 'CLOSED');
 
         abort_unless($canView, 403, 'Unauthorized access to this Action Matrix.');
+
+        $master->setRelation('comments', $this->filterVisibleComments($master->comments, $user, $master->status));
 
         $commentAttachments = \App\Models\AcmCommentAttachment::where('acm_id', $master->acm_id)
             ->orderBy('sl')
@@ -387,21 +396,13 @@ class ActionMatrixController extends Controller
         $user  = auth()->user();
         $acmId = trim($acmId);
 
-        // Self-heal: if a comment by this user exists with is_draft=0 but the matrix is
-        // still at their desk (saved before the is_draft column was introduced), mark it.
-        \Illuminate\Support\Facades\DB::table('acm_comments')
-            ->join('acm_master', 'acm_comments.acm_id', '=', 'acm_master.acm_id')
-            ->where('acm_comments.acm_id', $acmId)
-            ->where('acm_comments.created_by', $user->emp_id)
-            ->where('acm_comments.is_draft', 0)
-            ->whereIn('acm_master.status', ['PO_REVIEW', 'PO_REJECTED'])
-            ->whereColumn('acm_master.current_desk_emp_id', 'acm_comments.created_by')
-            ->update(['acm_comments.is_draft' => 1]);
-
+        // is_draft=0 means the comment is being worked on (not yet approved).
+        // is_draft=1 means approved/finalized — not pre-fillable.
         $draft = \Illuminate\Support\Facades\DB::table('acm_comments')
             ->where('acm_id', $acmId)
             ->where('created_by', $user->emp_id)
-            ->where('is_draft', 1)
+            ->where('is_draft', 0)
+            ->orderByDesc('sl')
             ->first();
 
         if (!$draft) {
@@ -490,11 +491,14 @@ class ActionMatrixController extends Controller
      */
     public function getHistory($acm_id)
     {
+        $user = auth()->user();
+
         $master = \App\Models\AcmMaster::with(['comments.attachments', 'pksfMovements', 'poMovements'])
             ->where('acm_id', $acm_id)
             ->firstOrFail();
 
-        // Build a unified history view
+        $master->setRelation('comments', $this->filterVisibleComments($master->comments, $user, $master->status));
+
         return view('action_matrix.partials.history', compact('master'))->render();
     }
 
@@ -722,5 +726,41 @@ class ActionMatrixController extends Controller
             'remarks' => $movement->remarks,
             'created_at' => $movement->created_at,
         ];
+    }
+
+    /**
+     * Filter which comments are visible to $user given the matrix status.
+     *
+     * is_draft=0 → being worked on (not yet approved) — restricted visibility
+     * is_draft=1 → finalized/approved — visible to everyone
+     */
+    private function filterVisibleComments($comments, \App\Models\User $user, string $status)
+    {
+        if ($user->hasAnyRole(['Super_Admin', 'Super Admin', 'Admin'])) {
+            return $comments;
+        }
+
+        $isSupervisor = \Illuminate\Support\Facades\DB::table('users')
+            ->where('supervisor_emp_id', $user->emp_id)->exists();
+
+        return $comments->filter(function ($comment) use ($user, $status, $isSupervisor) {
+            // Finalized comments are visible to all
+            if ((int) $comment->is_draft === 1) return true;
+
+            // Author always sees their own in-progress comment
+            if ($comment->created_by === $user->emp_id) return true;
+
+            // PO Supervisor sees PO CO's draft only when forwarded to them
+            if ($isSupervisor && $user->isPo() && $comment->comment_source === 'PO' && $status === 'PO_SUBMITTED') {
+                return true;
+            }
+
+            // PKSF Supervisor sees PKSF CO's draft only when revision is forwarded to them
+            if ($isSupervisor && $user->isPksf() && $comment->comment_source === 'PKSF' && $status === 'REVISION_REQUESTED') {
+                return true;
+            }
+
+            return false;
+        })->values();
     }
 }

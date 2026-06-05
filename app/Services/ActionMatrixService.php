@@ -33,6 +33,23 @@ class ActionMatrixService
                            ->where('status', 'CLOSED');
                     });
                 }
+
+                // Supervisors: detected by checking if any subordinate points to this user
+                $isSupervisor = DB::table('users')
+                    ->where('supervisor_emp_id', $user->emp_id)->exists();
+
+                if ($isSupervisor && $user->isPo() && $user->po_code) {
+                    // PO Supervisor sees all closed matrices for their PO code
+                    $inner->orWhere(function ($q2) use ($user) {
+                        $q2->where('po_code', $user->po_code)
+                           ->where('status', 'CLOSED');
+                    });
+                }
+
+                if ($isSupervisor && $user->isPksf()) {
+                    // PKSF Supervisor sees all closed matrices
+                    $inner->orWhere('status', 'CLOSED');
+                }
             });
         }
 
@@ -515,18 +532,17 @@ class ActionMatrixService
             // 1. Calculate next SL for comments
             $nextSl = DB::table('acm_comments')->where('acm_id', $acmId)->max('sl') + 1;
 
-            // 2. Insert Comment
-            // is_draft: 1 = saved as draft (editable), 0 = submitted to supervisor (locked)
-            $isDraft = (isset($data['forward_to_supervisor']) && $data['forward_to_supervisor'] == 1) ? 0 : 1;
+            // 2. Insert Comment — is_draft=0 (being worked on); set to 1 only when approved
             DB::table('acm_comments')->insert([
                 'acm_id'         => $acmId,
                 'sl'             => $nextSl,
-                'comment_source' => $user->emp_type, // PKSF or PO
+                'comment_source' => $user->emp_type,
                 'comment_short'  => $data['comment_short'] ?? null,
                 'comment_detail' => $data['comment_detail'],
-                'is_draft'       => $isDraft,
+                'is_draft'       => 0,
                 'created_by'     => $user->emp_id,
                 'created_at'     => now(),
+                'updated_at'     => now(),
             ]);
 
             // 3. Handle File Attachments (Up to 3)
@@ -560,17 +576,15 @@ class ActionMatrixService
     public function updateComment(array $data, \App\Models\User $user): void
     {
         DB::transaction(function () use ($data, $user) {
-            $acmId   = trim($data['acm_id']);
-            $sl      = (int) $data['comment_sl'];
-            $isDraft = (isset($data['forward_to_supervisor']) && $data['forward_to_supervisor'] == 1) ? 0 : 1;
+            $acmId = trim($data['acm_id']);
+            $sl    = (int) $data['comment_sl'];
 
-            // 1. Update the comment text and draft status
+            // 1. Update comment text — is_draft stays 0 (locked to 1 only on approval)
             DB::table('acm_comments')
                 ->where('acm_id', $acmId)
                 ->where('sl', $sl)
                 ->update([
                     'comment_detail' => $data['comment_detail'],
-                    'is_draft'       => $isDraft,
                     'updated_by'     => $user->emp_id,
                     'updated_at'     => now(),
                 ]);
@@ -639,19 +653,6 @@ class ActionMatrixService
                 throw new \Exception('No PO supervisor assigned to your profile.');
             }
 
-            // Lock any draft comment by this PO CO — it is now submitted (not editable).
-            // This handles both the modal path (updateComment already set is_draft=0)
-            // and the standalone forward button path (which skips updateComment entirely).
-            DB::table('acm_comments')
-                ->where('acm_id', $acmId)
-                ->where('created_by', $user->emp_id)
-                ->where('is_draft', 1)
-                ->update([
-                    'is_draft'   => 0,
-                    'updated_by' => $user->emp_id,
-                    'updated_at' => now(),
-                ]);
-
             $master->update([
                 'status' => 'PO_SUBMITTED',
                 'current_desk_emp_id' => $supervisorId,
@@ -682,6 +683,24 @@ class ActionMatrixService
         DB::transaction(function () use ($acmId, $remarks, $user) {
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
             $pksfCreatorId = $master->created_by;
+
+            // Lock the PO CO's comment — approved, no longer editable
+            $lastMovement = DB::table('acm_po_movements')
+                ->where('acm_id', $acmId)
+                ->orderByDesc('sl')
+                ->first();
+            $poCOId = $lastMovement?->from_emp_id;
+            if ($poCOId) {
+                DB::table('acm_comments')
+                    ->where('acm_id', $acmId)
+                    ->where('created_by', $poCOId)
+                    ->where('is_draft', 0)
+                    ->update([
+                        'is_draft'   => 1,
+                        'updated_by' => $user->emp_id,
+                        'updated_at' => now(),
+                    ]);
+            }
 
             $master->update([
                 'status' => 'PO_APPROVED',
@@ -953,6 +972,17 @@ class ActionMatrixService
         $acmId = trim($acmId);
         DB::transaction(function () use ($acmId, $remarks, $user) {
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
+
+            // Lock the PKSF CO's revision comment — approved, no longer editable
+            DB::table('acm_comments')
+                ->where('acm_id', $acmId)
+                ->where('created_by', $master->created_by)
+                ->where('is_draft', 0)
+                ->update([
+                    'is_draft'   => 1,
+                    'updated_by' => $user->emp_id,
+                    'updated_at' => now(),
+                ]);
 
             // Find PO Concern Officer
             $poOfficer = \App\Models\User::whereHas('roles', function($q) {
