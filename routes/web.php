@@ -20,7 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Administrative Routes (Super Admin & Admin Only)
-    Route::middleware('role:Super_Admin, Admin')->group(function () {
+    Route::middleware('role:Super_Admin,Admin')->group(function () {
         // Role Management
         Route::resource('roles', \App\Http\Controllers\RoleController::class);
 

@@ -1,0 +1,3 @@
+[ Use this command to install dependencies in place of composer install.]
+1. composer install --prefer-source
+

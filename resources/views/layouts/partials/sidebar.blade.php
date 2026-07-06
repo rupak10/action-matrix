@@ -30,12 +30,12 @@
                     'icon' => 'bi-grid-3x3-gap',
                     'children' => [
                         [
-                            'label' => 'Matrix List',
+                            'label' => 'Follow-up List',
                             'route' => 'action-matrix.index',
                             'active' => request()->routeIs('action-matrix.index'),
                         ],
                         [
-                            'label'     => 'New Matrix',
+                            'label'     => 'New Follow-up',
                             'route'     => 'action-matrix.create',
                             'active'    => request()->routeIs('action-matrix.create'),
                             'pksf_only' => true,   // PO users cannot create matrices

@@ -26,7 +26,7 @@
     <!-- Header Section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="display-6 fw-bold text-gradient mb-1">Action Matrix List</h2>
+            <h2 class="display-6 fw-bold text-gradient mb-1">Follow-up Action Matrix List</h2>
             @if(auth()->user()->isPksf())
                 <p class="text-muted">Manage and track all observations and PO responses.</p>
             @else
@@ -1339,6 +1339,9 @@
                                || ($('#filterPo').length && $('#filterPo').val() !== '')
                                || $('#filterPriority').val() !== '';
                 $('#btnClearFilters').toggle(anyFilter);
+
+                const isCompleted = $('#filterView').val() === 'completed';
+                table.column(6).visible(!isCompleted, false);
             }
         });
 

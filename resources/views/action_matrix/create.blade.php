@@ -11,7 +11,7 @@
             <!-- Header Section -->
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <h3 class="fw-bold text-gradient mb-0">Create Action Matrix</h3>
+                    <h3 class="fw-bold text-gradient mb-0">Create Follow-up Action Matrix</h3>
                     <p class="text-muted small mb-0">Initiate a new observation record.</p>
                 </div>
                 <a href="{{ route('action-matrix.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
