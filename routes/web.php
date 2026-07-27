@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     // PO Workflow Routes
     Route::post('/action-matrix/comment', [ActionMatrixController::class, 'storeComment'])->name('action-matrix.comment');
     Route::post('/action-matrix/po-forward', [ActionMatrixController::class, 'forwardToPoSupervisor'])->name('action-matrix.po-forward');
+    Route::post('/action-matrix/po-forward-to-officer', [ActionMatrixController::class, 'forwardToPoOfficer'])->name('action-matrix.po-forward-to-officer');
     Route::post('/action-matrix/po-approve', [ActionMatrixController::class, 'approvePoResponse'])->name('action-matrix.po-approve');
     Route::post('/action-matrix/po-reject', [ActionMatrixController::class, 'rejectPoResponse'])->name('action-matrix.po-reject');
     Route::get('/action-matrix/{acm_id}/history', [ActionMatrixController::class, 'getHistory'])->name('action-matrix.history');

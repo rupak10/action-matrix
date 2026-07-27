@@ -244,7 +244,7 @@
 <div class="container-fluid">
 
     {{-- ── Page header ─────────────────────────────────────────────── --}}
-    <div class="analytics-header">
+    {{-- <div class="analytics-header">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div>
                 <h4><i class="bi bi-bar-chart-line me-2"></i>Analytics Dashboard</h4>
@@ -255,7 +255,7 @@
                 <div id="refreshedAt" style="font-size:.9rem;font-weight:600;">{{ now()->format('d M Y, h:i A') }}</div>
             </div>
         </div>
-    </div>
+    </div> --}}
 
     {{-- ── Filter bar ──────────────────────────────────────────────── --}}
     <div class="filter-bar">
