@@ -25,8 +25,13 @@ class ActionMatrixController extends Controller
         // Stat cards — lightweight counts only, no full collection load
         $stats = $this->acmService->getStatCounts($user);
 
-        // Fetch all PO Concern Officers (role 'PO_CO') for modal assignment
+        // Fetch PO Supervisors (role 'PO_SUPERVISOR') for PKSF review modal
         $poOfficers = \App\Models\User::whereHas('roles', function ($q) {
+            $q->where('name', 'PO_SUPERVISOR');
+        })->get();
+
+        // Fetch PO Concern Officers (role 'PO_CO') for PO SO forward-to-officer modal
+        $poConcernOfficers = \App\Models\User::whereHas('roles', function ($q) {
             $q->where('name', 'PO_CO');
         })->get();
 
@@ -39,7 +44,7 @@ class ActionMatrixController extends Controller
         $usersByEmpId        = collect();
 
         return view('action_matrix.index', compact(
-            'stats', 'poOfficers', 'formOptions',
+            'stats', 'poOfficers', 'poConcernOfficers', 'formOptions',
             'matrices', 'incomingAssignments', 'usersByEmpId'
         ));
     }
@@ -75,8 +80,8 @@ class ActionMatrixController extends Controller
      */
     public function create()
     {
-        if (!auth()->user()->isPksf()) {
-            abort(403, 'Only PKSF users can create an action matrix.');
+        if (!auth()->user()->hasAnyRole(['PKSF_CO'])) {
+            abort(403, 'Only PKSF Concern Officers can create an action matrix.');
         }
 
         $formOptions = $this->getFormOptions();
@@ -89,8 +94,8 @@ class ActionMatrixController extends Controller
      */
     public function store(Request $request)
     {
-        if (!auth()->user()->isPksf()) {
-            abort(403, 'Only PKSF users can create an action matrix.');
+        if (!auth()->user()->hasAnyRole(['PKSF_CO'])) {
+            abort(403, 'Only PKSF Concern Officers can create an action matrix.');
         }
 
         $validated = $request->validate([
@@ -149,10 +154,9 @@ class ActionMatrixController extends Controller
         $canView = $isAdmin
             || $master->created_by === $user->emp_id
             || $master->current_desk_emp_id === $user->emp_id
-            // PO CO: all closed matrices for their PO code
-            || ($user->isPo() && $user->po_code && $master->po_code === $user->po_code && $master->status === 'CLOSED')
-            // PO Supervisor: all closed matrices for their PO code
-            || ($isSupervisor && $user->isPo() && $user->po_code && $master->po_code === $user->po_code && $master->status === 'CLOSED')
+            // Any PO user: all matrices for their PO that are in PO workflow or closed
+            || ($user->isPo() && $user->po_code && $master->po_code === $user->po_code
+                && ($master->po_inbox === 'Y' || $master->status === 'CLOSED'))
             // PKSF Supervisor: all closed matrices
             || ($isSupervisor && $user->isPksf() && $master->status === 'CLOSED');
 
@@ -430,6 +434,25 @@ class ActionMatrixController extends Controller
     }
 
     /**
+     * PO Supervisor forwards to PO Concern Officer.
+     */
+    public function forwardToPoOfficer(Request $request)
+    {
+        $request->validate([
+            'acm_id' => 'required|string',
+            'remarks' => 'nullable|string|max:1000'
+        ]);
+
+        try {
+            $this->acmService->forwardToPoOfficer($request->acm_id, $request->remarks, auth()->user());
+            return redirect()->route('action-matrix.index')
+                ->with('success', 'Action Matrix ' . $request->acm_id . ' forwarded to PO Concern Officer.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
      * PO Officer forwards to PO Supervisor.
      */
     public function forwardToPoSupervisor(Request $request)
@@ -696,7 +719,7 @@ class ActionMatrixController extends Controller
             ],
             'categories' => ['FINANCIAL', 'OPERATIONAL', 'COMPLIANCE', 'GOVERNANCE'],
             'visitTypes' => ['ONSITE', 'OFFSITE'],
-            'visitCategories' => ['REGULAR VISIT', 'MANAGEMENT AUDIT', 'SPECIAL AUDIT'],
+            'visitCategories' => ['REGULAR VISIT', 'MANAGEMENT AUDIT', 'SPECIAL AUDIT', 'PKSF INTERNAL AUDIT', 'PKSF EXTERNAL AUDIT'],
             'priorities' => ['LOW', 'MEDIUM', 'HIGH'],
         ];
     }

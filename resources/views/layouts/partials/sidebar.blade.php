@@ -8,11 +8,11 @@
                     'title' => 'Dashboard',
                     'icon' => 'bi-speedometer2',
                     'children' => [
-                        [
+                        /* [
                             'label' => 'Overview',
                             'route' => 'dashboard',
                             'active' => request()->routeIs('dashboard') || request()->routeIs('admin.index'),
-                        ],
+                        ], */
                         [
                             'label'  => 'Analytics',
                             'route'  => 'analytics.index',
@@ -35,10 +35,10 @@
                             'active' => request()->routeIs('action-matrix.index'),
                         ],
                         [
-                            'label'     => 'New Follow-up',
-                            'route'     => 'action-matrix.create',
-                            'active'    => request()->routeIs('action-matrix.create'),
-                            'pksf_only' => true,   // PO users cannot create matrices
+                            'label'  => 'New Follow-up',
+                            'route'  => 'action-matrix.create',
+                            'active' => request()->routeIs('action-matrix.create'),
+                            'roles'  => ['PKSF_CO'],
                         ],
                     ],
                 ],
@@ -204,6 +204,8 @@
                                     if (!empty($child['pksf_only'])
                                         && !auth()->user()->isPksf()
                                         && !auth()->user()->hasAnyRole(['Admin', 'Super_Admin'])) continue;
+                                    // roles child items: visible only to users with one of the listed roles
+                                    if (!empty($child['roles']) && !auth()->user()->hasAnyRole($child['roles'])) continue;
                                     $href = isset($child['route']) ? route($child['route']) : ($child['url'] ?? '#');
                                 @endphp
                                 <a href="{{ $href }}"

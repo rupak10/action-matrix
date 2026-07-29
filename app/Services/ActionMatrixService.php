@@ -26,25 +26,19 @@ class ActionMatrixService
                 $inner->where('created_by', $user->emp_id)
                       ->orWhere('current_desk_emp_id', $user->emp_id);
 
-                // PO users can also see all closed matrices for their PO code
+                // Any PO user: all matrices for their PO that are in PO workflow or closed
                 if ($user->isPo() && $user->po_code) {
                     $inner->orWhere(function ($q2) use ($user) {
                         $q2->where('po_code', $user->po_code)
-                           ->where('status', 'CLOSED');
+                           ->where(function ($q3) {
+                               $q3->where('po_inbox', 'Y')->orWhere('status', 'CLOSED');
+                           });
                     });
                 }
 
                 // Supervisors: detected by checking if any subordinate points to this user
                 $isSupervisor = DB::table('users')
                     ->where('supervisor_emp_id', $user->emp_id)->exists();
-
-                if ($isSupervisor && $user->isPo() && $user->po_code) {
-                    // PO Supervisor sees all closed matrices for their PO code
-                    $inner->orWhere(function ($q2) use ($user) {
-                        $q2->where('po_code', $user->po_code)
-                           ->where('status', 'CLOSED');
-                    });
-                }
 
                 if ($isSupervisor && $user->isPksf()) {
                     // PKSF Supervisor sees all closed matrices
@@ -464,12 +458,12 @@ class ActionMatrixService
         DB::transaction(function () use ($acmId, $remarks, $toEmpId, $user) {
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
 
-            // 1. Update Master
+            // 1. Update Master — lands at PO SO first (PO_SO_REVIEW)
             $master->update([
-                'status' => 'PO_REVIEW',
+                'status' => 'PO_SO_REVIEW',
                 'current_desk_emp_id' => $toEmpId,
                 'po_inbox' => 'Y',
-                'is_editable_by_po' => 'Y',
+                'is_editable_by_po' => 'N',
                 'updated_at' => now(),
                 'updated_by' => $user->emp_id
             ]);
@@ -481,7 +475,7 @@ class ActionMatrixService
                 'sl' => $nextSl,
                 'from_emp_id' => $user->emp_id,
                 'to_emp_id' => $toEmpId,
-                'action_type' => 'APPROVED_AND_FORWARDED_TO_PO',
+                'action_type' => 'APPROVED_AND_FORWARDED_TO_PO_SUPERVISOR',
                 'remarks' => $remarks ?? '',
                 'created_by' => $user->emp_id,
                 'created_at' => now(),
@@ -636,6 +630,45 @@ class ActionMatrixService
                     }
                 }
             }
+        });
+    }
+
+    /**
+     * PO Supervisor forwards to PO Concern Officer.
+     */
+    public function forwardToPoOfficer(string $acmId, ?string $remarks, \App\Models\User $user): void
+    {
+        $acmId = trim($acmId);
+        DB::transaction(function () use ($acmId, $remarks, $user) {
+            $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
+
+            $poOfficer = \App\Models\User::whereHas('roles', function ($q) {
+                $q->where('name', 'PO_CO');
+            })->where('po_code', $master->po_code)->first();
+
+            if (!$poOfficer) {
+                throw new \Exception('No PO Concern Officer found for PO Code ' . $master->po_code);
+            }
+
+            $master->update([
+                'status' => 'PO_REVIEW',
+                'current_desk_emp_id' => $poOfficer->emp_id,
+                'is_editable_by_po' => 'Y',
+                'updated_at' => now(),
+                'updated_by' => $user->emp_id
+            ]);
+
+            $nextSl = DB::table('acm_po_movements')->where('acm_id', $acmId)->max('sl') + 1;
+            DB::table('acm_po_movements')->insert([
+                'acm_id' => $acmId,
+                'sl' => $nextSl,
+                'from_emp_id' => $user->emp_id,
+                'to_emp_id' => $poOfficer->emp_id,
+                'action_type' => 'FORWARDED_TO_PO_OFFICER',
+                'remarks' => $remarks ?? '',
+                'created_by' => $user->emp_id,
+                'created_at' => now(),
+            ]);
         });
     }
 

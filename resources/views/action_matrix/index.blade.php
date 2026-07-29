@@ -33,9 +33,12 @@
                 <p class="text-muted">View observations assigned to you and submit your responses.</p>
             @endif
         </div>
-        @if(auth()->user()->isPksf())
-            <a href="{{ route('action-matrix.create') }}" class="btn btn-primary rounded-pill px-4 shadow-sm">
+        @if(auth()->user()->hasAnyRole(['PKSF_CO']))
+            {{-- <a href="{{ route('action-matrix.create') }}" class="btn btn-primary rounded-pill px-4 shadow-sm">
                 <i class="bi bi-plus-lg me-2"></i> Create New Matrix
+            </a> --}}
+            <a href="{{ route('action-matrix.create') }}" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                <i class="bi bi-plus-lg me-2"></i> Create New Observation
             </a>
         @endif
     </div>
@@ -185,18 +188,18 @@
                     </div>
 
                     <div class="mb-3" id="poAssignWrapper">
-                        <label class="form-label fw-bold text-primary">Assigned PO Officer</label>
+                        <label class="form-label fw-bold text-primary">Assigned PO Supervisor</label>
                         <div class="p-3 bg-light-primary rounded-3 border border-primary-subtle d-flex align-items-center">
                             <div class="avatar-xs bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width: 32px; height: 32px;">
                                 <i class="bi bi-person"></i>
                             </div>
                             <div>
-                                <div id="po_officer_name_display" class="fw-bold text-dark">Searching for officer...</div>
-                                <div class="smaller text-muted">Role: PO Concern Officer</div>
+                                <div id="po_officer_name_display" class="fw-bold text-dark">Searching for supervisor...</div>
+                                <div class="smaller text-muted">Role: PO Supervisor</div>
                             </div>
                         </div>
                         <input type="hidden" name="to_emp_id" id="to_emp_id_hidden">
-                        
+
                         {{-- Data source for JS --}}
                         <div id="poOfficersData" style="display:none;">
                             @foreach($poOfficers as $puser)
@@ -205,7 +208,7 @@
                         </div>
 
                         <div class="form-text text-muted smaller mt-2">
-                            <i class="bi bi-info-circle me-1"></i>System automatically assigns this to the PO Concern Officer (PO_CO).
+                            <i class="bi bi-info-circle me-1"></i>System automatically assigns this to the PO Supervisor (PO_SUPERVISOR).
                         </div>
                     </div>
                 </div>
@@ -505,6 +508,62 @@
                     <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm" {{ !auth()->user()->supervisor_emp_id ? 'disabled' : '' }}>
                         <i class="bi bi-send me-2"></i>Send to Supervisor
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- PO Supervisor → Forward to PO Officer Modal -->
+<div class="modal fade" id="poForwardToOfficerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white p-4">
+                <h5 class="modal-title fw-bold">Forward to PO Concern Officer</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="poForwardToOfficerForm" method="POST" action="{{ route('action-matrix.po-forward-to-officer') }}">
+                @csrf
+                <div class="modal-body p-4">
+                    <input type="hidden" name="acm_id" id="po_forward_officer_acm_id">
+                    <div class="alert alert-info border-0 shadow-none smaller mb-4">
+                        <i class="bi bi-info-circle-fill me-2"></i>You are forwarding this observation to the PO Concern Officer for response.
+                    </div>
+
+                    {{-- PO CO Info Card --}}
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Forwarding To</label>
+                        <div id="poCOInfoCard" class="d-flex align-items-center bg-light p-3 rounded-3 border">
+                            <div class="avatar-xs bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width: 36px; height: 36px;">
+                                <i class="bi bi-person" id="poCOInitial"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark" id="poCONameDisplay">Searching for officer...</h6>
+                                <small class="text-muted">PO Concern Officer</small>
+                            </div>
+                        </div>
+                        <div id="poCONotFoundAlert" class="alert alert-warning border-0 shadow-none smaller mt-2" style="display:none;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>No PO Concern Officer found for this PO.
+                        </div>
+                    </div>
+
+                    {{-- Hidden data source for JS --}}
+                    <div id="poCOData" style="display:none;">
+                        @foreach($poConcernOfficers as $co)
+                            <span data-emp-id="{{ $co->emp_id }}" data-name="{{ $co->name }}" data-pocode="{{ $co->po_code }}"></span>
+                        @endforeach
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="po_forward_officer_remarks" class="form-label fw-bold">Remarks (Optional)</label>
+                        <textarea name="remarks" id="po_forward_officer_remarks" class="form-control" rows="3" placeholder="Any instructions for the PO Officer..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0 d-flex gap-2">
+                    <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="btnForwardToOfficer" class="btn btn-primary px-4 rounded-pill shadow-sm">
+                        <i class="bi bi-send-fill me-2"></i>Forward to Officer
                     </button>
                 </div>
             </form>
@@ -1151,9 +1210,10 @@
     $(document).ready(function() {
         /* ── Auth context (passed from PHP) ──────────────────────────── */
         const AUTH = {
-            empId:  '{{ auth()->user()->emp_id }}',
-            isPksf: {{ auth()->user()->isPksf() ? 'true' : 'false' }},
-            isPo:   {{ auth()->user()->isPo()   ? 'true' : 'false' }},
+            empId:          '{{ auth()->user()->emp_id }}',
+            isPksf:         {{ auth()->user()->isPksf() ? 'true' : 'false' }},
+            isPo:           {{ auth()->user()->isPo()   ? 'true' : 'false' }},
+            isPoSupervisor: {{ auth()->user()->hasAnyRole(['PO_SUPERVISOR']) ? 'true' : 'false' }},
         };
 
         /* ── String-escape helpers ────────────────────────────────────── */
@@ -1187,6 +1247,7 @@
                 PO_SUBMITTED:        ['warning text-dark', 'PO Submitted'],
                 PO_APPROVED:         ['success',           'PO Approved'],
                 PO_REJECTED:         ['danger',            'PO Returned'],
+                PO_SO_REVIEW:        ['info text-dark',    'PO Supervisor Review'],
                 WAITING_FOR_CLOSURE: ['primary',           'Awaiting Closure'],
                 REVISION_REQUESTED:  ['warning text-dark', 'Revision Requested'],
                 PKSF_REJECTED:       ['danger',            'Returned by PKSF'],
@@ -1264,8 +1325,14 @@
 
             /* ── PO-side buttons ── */
             if (AUTH.isPo) {
+                // PO Supervisor: forward to PO CO when matrix first arrives
+                if (AUTH.isPoSupervisor && myDesk && s === 'PO_SO_REVIEW') {
+                    btns += `<button class="btn btn-sm btn-primary rounded-pill me-1 btn-po-forward-to-officer"
+                                     data-acmid="${id}" data-pocode="${pc}" title="Forward to PO Officer">
+                                <i class="bi bi-send me-1"></i>Forward to Officer</button>`;
+                }
                 // PO CO: comment + optional forward
-                if (myDesk && ['PO_REVIEW','PO_REJECTED'].includes(s)) {
+                if (!AUTH.isPoSupervisor && myDesk && ['PO_REVIEW','PO_REJECTED'].includes(s)) {
                     btns += `<button class="btn btn-sm btn-outline-primary rounded-pill me-1 btn-comment-matrix"
                                      data-acmid="${id}" data-pocode="${pc}"
                                      data-category="${cat}" data-priority="${pri}"
@@ -1279,7 +1346,7 @@
                     }
                 }
                 // PO Supervisor: review officer's response
-                if (myDesk && s === 'PO_SUBMITTED') {
+                if (AUTH.isPoSupervisor && myDesk && s === 'PO_SUBMITTED') {
                     btns += `<button class="btn btn-sm btn-warning rounded-pill me-1 btn-po-review"
                                      data-acmid="${id}" title="Review PO Response">
                                 <i class="bi bi-shield-check me-1"></i>Review</button>`;
@@ -1696,6 +1763,42 @@
             $('#po_forward_remarks').val('');
             
             const modal = new bootstrap.Modal(document.getElementById('poForwardModal'));
+            modal.show();
+        });
+
+        // PO Supervisor: Forward to PO Officer Modal
+        $('#matrixTable').on('click', '.btn-po-forward-to-officer', function() {
+            const acmId  = $(this).attr('data-acmid');
+            const poCode = $(this).attr('data-pocode');
+
+            $('#po_forward_officer_acm_id').val(acmId);
+            $('#po_forward_officer_remarks').val('');
+
+            // Look up PO CO by po_code
+            let foundCO = null;
+            $('#poCOData span').each(function() {
+                if ($(this).attr('data-pocode') === poCode) {
+                    foundCO = { name: $(this).attr('data-name') };
+                    return false;
+                }
+            });
+
+            if (foundCO) {
+                $('#poCONameDisplay').text(foundCO.name);
+                $('#poCOInitial').replaceWith(
+                    `<span id="poCOInitial" class="fw-bold">${foundCO.name.charAt(0).toUpperCase()}</span>`
+                );
+                $('#poCOInfoCard').show();
+                $('#poCONotFoundAlert').hide();
+                $('#btnForwardToOfficer').prop('disabled', false);
+            } else {
+                $('#poCONameDisplay').text('No officer found');
+                $('#poCOInfoCard').show();
+                $('#poCONotFoundAlert').show();
+                $('#btnForwardToOfficer').prop('disabled', true);
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('poForwardToOfficerModal'));
             modal.show();
         });
 
