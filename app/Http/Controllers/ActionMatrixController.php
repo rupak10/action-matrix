@@ -80,7 +80,7 @@ class ActionMatrixController extends Controller
      */
     public function create()
     {
-        if (!auth()->user()->hasAnyRole(['PKSF_CO'])) {
+        if (!auth()->user()->hasAnyRole(['PKSF_CO', 'Admin', 'Super_Admin'])) {
             abort(403, 'Only PKSF Concern Officers can create an action matrix.');
         }
 
@@ -94,7 +94,7 @@ class ActionMatrixController extends Controller
      */
     public function store(Request $request)
     {
-        if (!auth()->user()->hasAnyRole(['PKSF_CO'])) {
+        if (!auth()->user()->hasAnyRole(['PKSF_CO', 'Admin', 'Super_Admin'])) {
             abort(403, 'Only PKSF Concern Officers can create an action matrix.');
         }
 
@@ -148,7 +148,7 @@ class ActionMatrixController extends Controller
         ])->where('acm_id', $id)->firstOrFail();
 
         $isAdmin = $user->hasAnyRole(['Super_Admin', 'Super Admin', 'Admin']);
-        $isSupervisor = \Illuminate\Support\Facades\DB::table('users')
+        $isSupervisor = \Illuminate\Support\Facades\DB::table('user_supervisors')
             ->where('supervisor_emp_id', $user->emp_id)->exists();
 
         $canView = $isAdmin
@@ -763,7 +763,7 @@ class ActionMatrixController extends Controller
             return $comments;
         }
 
-        $isSupervisor = \Illuminate\Support\Facades\DB::table('users')
+        $isSupervisor = \Illuminate\Support\Facades\DB::table('user_supervisors')
             ->where('supervisor_emp_id', $user->emp_id)->exists();
 
         return $comments->filter(function ($comment) use ($user, $status, $isSupervisor) {

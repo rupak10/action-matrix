@@ -52,17 +52,20 @@
                             <td><span class="badge bg-light text-dark border">{{ $user->emp_id }}</span></td>
                             <td>
                                 @if($user->isPksf())
-                                    <span class="badge bg-sl-primary-soft text-sl-primary border">PKSF</span>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">PKSF</span>
                                 @else
-                                    <span class="badge bg-warning-soft text-warning border border-warning-subtle">PO</span>
+                                    <span class="badge bg-warning text-dark border">PO</span>
                                 @endif
                             </td>
                             <td><span class="smaller fw-bold text-sl-primary">{{ $user->designation }}</span></td>
                             <td><span class="smaller text-sl-muted">{{ $user->dept_name }}</span></td>
                             <td><span class="smaller text-sl-muted">{{ $user->unit_name }}</span></td>
                             <td>
-                                @if($user->supervisor)
-                                    <span class="badge bg-sl-primary-soft text-sl-primary border">{{ $user->supervisor->name }}</span>
+                                @php $primarySup = $user->supervisors->where('is_primary', true)->first(); @endphp
+                                @if($primarySup && $primarySup->supervisor)
+                                    <span class="badge bg-sl-primary-soft text-sl-primary border">{{ $primarySup->supervisor->name }}</span>
+                                @elseif($user->supervisors->count() > 0)
+                                    <span class="badge bg-sl-primary-soft text-sl-primary border">{{ $user->supervisors->first()->supervisor->name ?? '-' }}</span>
                                 @else
                                     <span class="text-muted fw-bold">-</span>
                                 @endif
@@ -72,19 +75,44 @@
                                     <a href="{{ route('users.edit', $user->id) }}" class="btn btn-sm btn-light border-0 text-sl-primary" title="Edit">
                                         <i class="bi bi-pencil-square"></i>
                                     </a>
-                                    <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?')">
+                                    <form id="delete-form-{{ $user->id }}" action="{{ route('users.destroy', $user->id) }}" method="POST">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-light border-0 text-danger" title="Delete">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
                                     </form>
+                                    <button type="button"
+                                            class="btn btn-sm btn-light border-0 text-danger btn-delete"
+                                            title="Delete"
+                                            data-form-id="delete-form-{{ $user->id }}"
+                                            data-user-name="{{ $user->name }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    {{-- Delete confirmation modal --}}
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle" style="width:56px;height:56px;">
+                            <i class="bi bi-trash3 text-danger fs-4"></i>
+                        </span>
+                    </div>
+                    <h6 class="fw-bold mb-1">Delete User</h6>
+                    <p class="text-muted small mb-0">Are you sure you want to delete <strong id="deleteUserName"></strong>? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0 pb-4 px-4 d-flex gap-2">
+                    <button type="button" class="btn btn-light border flex-fill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmDeleteBtn" class="btn btn-danger flex-fill">Delete</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -104,6 +132,26 @@
             // Link custom search box
             $('#userSearch').on('keyup', function() {
                 table.search(this.value).draw();
+            });
+
+            // Delete modal
+            const deleteModal   = new bootstrap.Modal(document.getElementById('deleteModal'));
+            const confirmBtn    = document.getElementById('confirmDeleteBtn');
+            const deleteUserName = document.getElementById('deleteUserName');
+            let pendingFormId   = null;
+
+            document.addEventListener('click', function(e) {
+                const btn = e.target.closest('.btn-delete');
+                if (!btn) return;
+                pendingFormId = btn.dataset.formId;
+                deleteUserName.textContent = btn.dataset.userName;
+                deleteModal.show();
+            });
+
+            confirmBtn.addEventListener('click', function() {
+                if (pendingFormId) {
+                    document.getElementById(pendingFormId).submit();
+                }
             });
         });
     </script>

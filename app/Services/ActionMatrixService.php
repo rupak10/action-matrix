@@ -37,7 +37,7 @@ class ActionMatrixService
                 }
 
                 // Supervisors: detected by checking if any subordinate points to this user
-                $isSupervisor = DB::table('users')
+                $isSupervisor = DB::table('user_supervisors')
                     ->where('supervisor_emp_id', $user->emp_id)->exists();
 
                 if ($isSupervisor && $user->isPksf()) {
@@ -414,9 +414,12 @@ class ActionMatrixService
         $acmId = trim($acmId);
         
         DB::transaction(function () use ($acmId, $remarks, $user) {
-            $supervisorId = $user->supervisor_emp_id;
+            $supervisorId = DB::table('user_supervisors')
+                ->where('emp_id', $user->emp_id)
+                ->where('is_primary', true)
+                ->value('supervisor_emp_id');
             if (!$supervisorId) {
-                throw new \Exception('You do not have a supervisor assigned. Cannot forward.');
+                throw new \Exception('You do not have a primary supervisor assigned. Cannot forward.');
             }
 
             // 1. Update acm_master directly using Query Builder
@@ -680,10 +683,13 @@ class ActionMatrixService
         $acmId = trim($acmId);
         DB::transaction(function () use ($acmId, $remarks, $user) {
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
-            $supervisorId = $user->supervisor_emp_id;
+            $supervisorId = DB::table('user_supervisors')
+                ->where('emp_id', $user->emp_id)
+                ->where('is_primary', true)
+                ->value('supervisor_emp_id');
 
             if (!$supervisorId) {
-                throw new \Exception('No PO supervisor assigned to your profile.');
+                throw new \Exception('No primary PO supervisor assigned to your profile.');
             }
 
             $master->update([
@@ -804,9 +810,12 @@ class ActionMatrixService
         $acmId = trim($acmId);
         DB::transaction(function () use ($acmId, $remarks, $user) {
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
-            $supervisorId = $user->supervisor_emp_id;
+            $supervisorId = DB::table('user_supervisors')
+                ->where('emp_id', $user->emp_id)
+                ->where('is_primary', true)
+                ->value('supervisor_emp_id');
             if (!$supervisorId) {
-                throw new \Exception('No supervisor assigned to your profile. Cannot request closure.');
+                throw new \Exception('No primary supervisor assigned to your profile. Cannot request closure.');
             }
 
             $master->update([
@@ -838,9 +847,12 @@ class ActionMatrixService
         DB::transaction(function () use ($data, $user) {
             $acmId = trim($data['acm_id']);
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
-            $supervisorId = $user->supervisor_emp_id;
+            $supervisorId = DB::table('user_supervisors')
+                ->where('emp_id', $user->emp_id)
+                ->where('is_primary', true)
+                ->value('supervisor_emp_id');
             if (!$supervisorId) {
-                throw new \Exception('No supervisor assigned to your profile. Cannot request revision.');
+                throw new \Exception('No primary supervisor assigned to your profile. Cannot request revision.');
             }
 
             // 0. Delete any existing attachments the user flagged for removal

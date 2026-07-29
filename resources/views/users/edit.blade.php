@@ -11,9 +11,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-10">
             <div class="sl-card">
-                <div class="sl-card-header">
-                    <h5 class="mb-0">Update Information</h5>
-                </div>
+
                 <div class="p-4">
                     <form action="{{ route('users.update', $user->id) }}" method="POST">
                         @csrf
@@ -102,22 +100,46 @@
                                 @enderror
                             </div>
 
+                            @php
+                                $savedSupEmpIds = old('supervisor_emp_ids',
+                                    $existingSupervisors->pluck('supervisor_emp_id')->toArray()
+                                );
+                                $savedPrimaryEmpId = old('primary_supervisor_emp_id',
+                                    $existingSupervisors->where('is_primary', true)->value('supervisor_emp_id')
+                                );
+                            @endphp
+
                             <div class="col-12">
-                                <label for="supervisor_emp_id" class="form-label fw-bold">Supervisor (Optional)</label>
-                                <select name="supervisor_emp_id" id="supervisor_emp_id" class="form-select sl-select2 @error('supervisor_emp_id') is-invalid @enderror" data-placeholder="Search and Select Supervisor">
-                                    <option value="">No Supervisor (Top Level)</option>
+                                <label class="form-label fw-bold">Supervisors (Optional)</label>
+                                <select name="supervisor_emp_ids[]" id="supervisor_emp_ids" class="form-select sl-select2 @error('supervisor_emp_ids') is-invalid @enderror" multiple data-placeholder="Search and select one or more supervisors">
                                     @foreach($supervisors as $sup)
-                                        <option value="{{ $sup->emp_id }}" {{ old('supervisor_emp_id', $user->supervisor_emp_id) == $sup->emp_id ? 'selected' : '' }}>
+                                        <option value="{{ $sup->emp_id }}"
+                                            {{ in_array($sup->emp_id, $savedSupEmpIds) ? 'selected' : '' }}>
                                             [{{ $sup->emp_id }}] {{ $sup->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('supervisor_emp_id')
+                                @error('supervisor_emp_ids')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
 
-                            <hr class="my-4">
+                            <div class="col-12" id="primarySupervisorWrapper" style="display:none;">
+                                <label class="form-label fw-bold">Primary Supervisor</label>
+                                <select name="primary_supervisor_emp_id" id="primary_supervisor_emp_id" class="form-select @error('primary_supervisor_emp_id') is-invalid @enderror">
+                                    <option value="">— Select primary —</option>
+                                    @foreach($existingSupervisors as $es)
+                                        <option value="{{ $es->supervisor_emp_id }}"
+                                            {{ $savedPrimaryEmpId == $es->supervisor_emp_id ? 'selected' : '' }}>
+                                            [{{ $es->supervisor_emp_id }}] {{ $es->supervisor->name ?? $es->supervisor_emp_id }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text text-muted">The primary supervisor receives forwarded matrices by default.</div>
+                                @error('primary_supervisor_emp_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
 
                             <!-- Security -->
                             <div class="col-12 mb-2">
@@ -153,9 +175,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // PO code toggle
             const empTypeSelect = document.getElementById('emp_type');
             const poCodeWrapper = document.getElementById('poCodeWrapper');
-            const poCodeSelect = document.getElementById('po_code');
+            const poCodeSelect  = document.getElementById('po_code');
 
             function togglePoField() {
                 if (empTypeSelect.value === 'PO') {
@@ -166,12 +189,35 @@
                     poCodeSelect.removeAttribute('required');
                 }
             }
-
-            // Initial check
             togglePoField();
-
-            // Listen for changes
             empTypeSelect.addEventListener('change', togglePoField);
+
+            // Primary supervisor dropdown — populated from the multi-select choices
+            const supMulti       = document.getElementById('supervisor_emp_ids');
+            const primaryWrapper = document.getElementById('primarySupervisorWrapper');
+            const primarySelect  = document.getElementById('primary_supervisor_emp_id');
+            const savedPrimary   = "{{ $savedPrimaryEmpId ?? '' }}";
+
+            function syncPrimaryOptions() {
+                const selected = Array.from(supMulti.selectedOptions);
+                const currentPrimary = primarySelect.value || savedPrimary;
+
+                primarySelect.innerHTML = '<option value="">— Select primary —</option>';
+                selected.forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt.value;
+                    o.textContent = opt.textContent.trim();
+                    if (opt.value === currentPrimary) o.selected = true;
+                    primarySelect.appendChild(o);
+                });
+
+                primaryWrapper.style.display = selected.length > 0 ? 'block' : 'none';
+
+                if (selected.length === 1) primarySelect.value = selected[0].value;
+            }
+
+            $(supMulti).on('change', syncPrimaryOptions);
+            syncPrimaryOptions();
         });
     </script>
 </x-app-layout>

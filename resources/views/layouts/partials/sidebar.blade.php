@@ -38,7 +38,7 @@
                             'label'  => 'New Follow-up',
                             'route'  => 'action-matrix.create',
                             'active' => request()->routeIs('action-matrix.create'),
-                            'roles'  => ['PKSF_CO'],
+                            'roles'  => ['PKSF_CO', 'Admin', 'Super_Admin'],
                         ],
                     ],
                 ],

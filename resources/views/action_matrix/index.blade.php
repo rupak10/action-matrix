@@ -2,6 +2,11 @@
 
 @section('content')
 @php
+    $myPrimarySupervisorRow = auth()->user()->supervisors()->where('is_primary', true)->with('supervisor')->first();
+    $mySupervisor    = $myPrimarySupervisorRow?->supervisor;
+    $mySupervisorEmpId = $mySupervisor?->emp_id;
+@endphp
+@php
     $employeeName = function ($empId) use ($usersByEmpId) {
         if (!$empId) {
             return 'Not assigned';
@@ -228,145 +233,109 @@
     </div>
 </div>
 
-<!-- Comment Modal (PO Officer) — Redesigned -->
+<!-- Comment Modal (PO Officer) -->
 <div class="modal fade" id="commentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable po-comment-dialog">
-        <div class="modal-content border-0 overflow-hidden po-comment-modal">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:560px;">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
 
             <!-- Header -->
-            <div class="po-cm-header p-3 border-0">
-                <div class="d-flex justify-content-between align-items-start gap-3">
-                    <div class="flex-grow-1 min-w-0">
-                        <span class="po-cm-kicker">
-                            <i class="bi bi-building me-1"></i>PO Official Response
-                        </span>
-                        <h4 class="po-cm-title mt-1 mb-2" id="cm_acm_id_display">—</h4>
-                        <div class="d-flex flex-wrap gap-2" id="cm_meta_row">
-                            {{-- populated by JS --}}
-                        </div>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white mt-1 flex-shrink-0" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header border-bottom px-4 py-3">
+                <div class="flex-grow-1 min-w-0 me-3">
+                    <h5 class="fw-bold mb-0" id="cm_acm_id_display">—</h5>
+                    <div class="d-flex flex-wrap gap-2 mt-2" id="cm_meta_row"></div>
                 </div>
+                <button type="button" class="btn-close flex-shrink-0" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <form id="commentForm" method="POST" action="{{ route('action-matrix.comment') }}" enctype="multipart/form-data"
-                  style="display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow:hidden;">
+            <form id="commentForm" method="POST" action="{{ route('action-matrix.comment') }}" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="acm_id" id="comment_acm_id">
                 <input type="hidden" name="forward_to_supervisor" id="cm_forward_flag" value="0">
                 <input type="hidden" name="comment_sl" id="comment_sl" value="">
 
-                <div class="modal-body p-0">
+                <div class="modal-body px-4 py-3">
 
-                    <!-- Context: PKSF Observation -->
-                    <div class="po-cm-context px-3 py-2">
-                        <div class="po-cm-context-label">
-                            <i class="bi bi-file-earmark-text me-1"></i>Observation You Are Responding To
-                        </div>
-                        <div class="po-cm-obs-text" id="cm_observation_text">—</div>
+                    <!-- Observation context -->
+                    <div class="bg-light rounded-3 p-3 mb-3" style="border-left:3px solid #6c757d;">
+                        <p class="text-muted mb-1" style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Observation</p>
+                        <div class="small text-dark" id="cm_observation_text" style="max-height:80px;overflow-y:auto;line-height:1.6;">—</div>
                     </div>
 
-                    <!-- Main Body -->
-                    <div class="p-3">
-
-                        <!-- Response Textarea -->
-                        <div class="mb-3">
-                            <label for="comment_detail" class="po-cm-label">
-                                <i class="bi bi-pencil-square me-1"></i>Your Official Response
-                            </label>
-                            <textarea
-                                name="comment_detail"
-                                id="comment_detail"
-                                rows="4"
-                                class="form-control po-cm-textarea"
-                                placeholder="Write your formal response to the observation above…"
-                                required
-                                maxlength="5000"></textarea>
-                            <div class="d-flex justify-content-between align-items-center mt-2">
-                                <span class="po-cm-field-hint">Be clear and specific. Your supervisor will review this before it reaches PKSF.</span>
-                                <span class="po-cm-charcount"><span id="cm_char_count">0</span>&thinsp;/&thinsp;5000</span>
-                            </div>
+                    <!-- Response textarea -->
+                    <div class="mb-3">
+                        <label for="comment_detail" class="form-label fw-bold small">Your Response</label>
+                        <textarea
+                            name="comment_detail"
+                            id="comment_detail"
+                            rows="5"
+                            class="form-control"
+                            placeholder="Write your formal response to the observation above…"
+                            required
+                            maxlength="5000"
+                            style="resize:vertical;"></textarea>
+                        <div class="text-end mt-1">
+                            <span class="text-muted" style="font-size:0.75rem;"><span id="cm_char_count">0</span> / 5000</span>
                         </div>
-
-                        <!-- File Attachments -->
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="po-cm-label mb-0">
-                                    <i class="bi bi-paperclip me-1"></i>Attachments
-                                </label>
-                                <span class="po-cm-file-count-badge" id="cmFileCountBadge">0 / 3</span>
-                            </div>
-                            <span class="po-cm-label-hint d-block mb-2">PDF, Word, Excel, Images &middot; Max 30 MB each</span>
-
-                            <div class="po-cm-upload-zone" id="cmUploadZone">
-
-                                <!-- Empty-state prompt -->
-                                <div class="po-cm-upload-prompt" id="cmUploadPrompt">
-                                    <div class="po-cm-upload-icon-wrap">
-                                        <i class="bi bi-cloud-arrow-up-fill"></i>
-                                    </div>
-                                    <div>
-                                        <span class="po-cm-upload-action">Click to browse</span>
-                                        <span class="po-cm-upload-or"> or drag &amp; drop files here</span>
-                                    </div>
-                                    <span class="po-cm-upload-types">PDF &middot; Word &middot; Excel &middot; Images</span>
-                                </div>
-
-                                <!-- File Pills -->
-                                <div id="cmFileList" style="display:none;"></div>
-
-                                <!-- Add another button (1–2 files selected) -->
-                                <div id="cmAddMoreWrap" class="mt-3 text-center" style="display:none;">
-                                    <button type="button" class="po-cm-btn-add-file" id="cmAddMoreBtn">
-                                        <i class="bi bi-plus-circle me-1"></i>Add another file
-                                    </button>
-                                </div>
-
-                            </div>
-
-                            <!-- Actual file input (hidden, driven by DataTransfer) -->
-                            <input type="file" name="attachments[]" id="cmActualFileInput" multiple style="display:none;"
-                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt">
-                        </div>
-
-                        <!-- Routing Card -->
-                        <div class="po-cm-routing-card" id="po_routing_card">
-                            <div class="po-cm-routing-inner">
-                                <div class="po-cm-supervisor-avatar">
-                                    {{ auth()->user()->supervisor ? strtoupper(substr(auth()->user()->supervisor->name, 0, 1)) : '?' }}
-                                </div>
-                                <div class="po-cm-routing-info">
-                                    <div class="po-cm-routing-name">
-                                        {{ auth()->user()->supervisor ? auth()->user()->supervisor->name : 'No Supervisor Assigned' }}
-                                    </div>
-                                    <div class="po-cm-routing-role">PO Supervisor &middot; Will review your draft before it reaches PKSF</div>
-                                </div>
-                                @if(auth()->user()->supervisor_emp_id)
-                                    <span class="po-cm-routing-status-badge po-cm-badge-assigned">
-                                        <i class="bi bi-shield-check me-1"></i>Assigned
-                                    </span>
-                                @else
-                                    <span class="po-cm-routing-status-badge po-cm-badge-warn">
-                                        <i class="bi bi-exclamation-triangle me-1"></i>Not Set
-                                    </span>
-                                @endif
-                            </div>
-                        </div>
-
                     </div>
+
+                    <!-- Attachments -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold small mb-0">Attachments <span class="text-muted fw-normal">(optional)</span></label>
+                            <span class="badge bg-light text-dark border" style="font-size:0.75rem;" id="cmFileCountBadge">0 / 3</span>
+                        </div>
+                        <div id="cmUploadZone" class="border rounded-3 p-3 text-center"
+                             style="cursor:pointer;background:#fafafa;transition:background 0.15s,border-color 0.15s;">
+                            <div id="cmUploadPrompt">
+                                <i class="bi bi-paperclip text-muted mb-1 d-block" style="font-size:1.3rem;"></i>
+                                <span class="small text-muted">Click to attach files</span>
+                                <span class="d-block text-muted" style="font-size:0.72rem;">PDF · Word · Excel · Images · max 30 MB</span>
+                            </div>
+                            <div id="cmFileList" style="display:none;text-align:left;"></div>
+                            <div id="cmAddMoreWrap" class="mt-2" style="display:none;">
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="cmAddMoreBtn">
+                                    <i class="bi bi-plus me-1"></i>Add another file
+                                </button>
+                            </div>
+                        </div>
+                        <input type="file" name="attachments[]" id="cmActualFileInput" multiple style="display:none;"
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt">
+                    </div>
+
+                    <!-- Routing info -->
+                    <div id="po_routing_card" class="d-flex align-items-center gap-3 bg-light rounded-3 p-3 border">
+                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                             style="width:38px;height:38px;background:#1b3a3a;font-size:0.85rem;">
+                            {{ $mySupervisor ? strtoupper(substr($mySupervisor->name, 0, 1)) : '?' }}
+                        </div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="fw-bold small text-truncate">{{ $mySupervisor ? $mySupervisor->name : 'No Supervisor Assigned' }}</div>
+                            <div class="text-muted" style="font-size:0.75rem;">Will review before forwarding to PKSF</div>
+                        </div>
+                        @if($mySupervisorEmpId)
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Assigned</span>
+                        @else
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Not Set</span>
+                        @endif
+                    </div>
+
+                    @if(!$mySupervisorEmpId)
+                        <div class="alert alert-warning mt-2 py-2 small border-0 mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Please assign a supervisor in your profile first.
+                        </div>
+                    @endif
+
                 </div>
 
                 <!-- Footer -->
-                <div class="modal-footer po-cm-footer border-0 p-3">
-                    <button type="button" class="btn po-cm-btn-cancel rounded-pill px-4" data-bs-dismiss="modal">
-                        Cancel
-                    </button>
+                <div class="modal-footer border-top px-4 py-3">
+                    <button type="button" class="btn btn-outline-danger rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
                     <div class="d-flex gap-2 ms-auto">
-                        <button type="submit" id="btnSaveDraft" class="btn po-cm-btn-draft rounded-pill px-4">
+                        <button type="submit" id="btnSaveDraft" class="btn btn-warning rounded-pill px-4">
                             <i class="bi bi-floppy2 me-2"></i>Save Draft
                         </button>
-                        <button type="submit" id="btnSaveForward" class="btn po-cm-btn-forward rounded-pill px-4"
-                                {{ !auth()->user()->supervisor_emp_id ? 'disabled' : '' }}>
+                        <button type="submit" id="btnSaveForward" class="btn btn-primary rounded-pill px-4"
+                                {{ !$mySupervisorEmpId ? 'disabled' : '' }}>
                             <i class="bi bi-send-fill me-2"></i>Submit to Supervisor
                         </button>
                     </div>
@@ -414,10 +383,10 @@
                     
                     <div class="d-flex align-items-center bg-soft-success p-3 rounded-3 border border-success-subtle mb-4">
                         <div class="avatar-xs bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width: 32px; height: 32px;">
-                            {{ auth()->user()->supervisor ? substr(auth()->user()->supervisor->name, 0, 1) : '?' }}
+                            {{ $mySupervisor ? substr($mySupervisor->name, 0, 1) : '?' }}
                         </div>
                         <div>
-                            <h6 class="mb-0 fw-bold text-dark">{{ auth()->user()->supervisor ? auth()->user()->supervisor->name : 'No Supervisor Assigned' }}</h6>
+                            <h6 class="mb-0 fw-bold text-dark">{{ $mySupervisor ? $mySupervisor->name : 'No Supervisor Assigned' }}</h6>
                             <small class="text-muted">PO Supervisor</small>
                         </div>
                     </div>
@@ -486,14 +455,14 @@
                         <label class="form-label small fw-bold text-muted text-uppercase mb-1">Forwarding To Supervisor</label>
                         <div class="d-flex align-items-center bg-soft-primary p-3 rounded-3 border border-primary-subtle">
                             <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold">
-                                {{ auth()->user()->supervisor ? substr(auth()->user()->supervisor->name, 0, 1) : '?' }}
+                                {{ $mySupervisor ? substr($mySupervisor->name, 0, 1) : '?' }}
                             </div>
                             <div>
-                                <h6 class="mb-0 fw-bold text-primary">{{ auth()->user()->supervisor ? auth()->user()->supervisor->name : 'No Supervisor Assigned' }}</h6>
-                                <small class="text-muted">{{ auth()->user()->supervisor_emp_id ?? 'Please assign a supervisor in your profile' }}</small>
+                                <h6 class="mb-0 fw-bold text-primary">{{ $mySupervisor ? $mySupervisor->name : 'No Supervisor Assigned' }}</h6>
+                                <small class="text-muted">{{ $mySupervisorEmpId ?? 'Please assign a supervisor in your profile' }}</small>
                             </div>
                         </div>
-                        @if(!auth()->user()->supervisor_emp_id)
+                        @if(!$mySupervisorEmpId)
                             <div class="alert alert-warning mt-3 border-0 shadow-none smaller">
                                 <i class="bi bi-exclamation-triangle-fill me-2"></i>Please assign a supervisor in your profile first.
                             </div>
@@ -506,7 +475,7 @@
                 </div>
                 <div class="modal-footer border-top-0 bg-light p-3">
                     <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm" {{ !auth()->user()->supervisor_emp_id ? 'disabled' : '' }}>
+                    <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm" {{ !$mySupervisorEmpId ? 'disabled' : '' }}>
                         <i class="bi bi-send me-2"></i>Send to Supervisor
                     </button>
                 </div>
@@ -592,10 +561,10 @@
                         <label class="form-label small fw-bold text-muted text-uppercase mb-1">Target Supervisor</label>
                         <div class="d-flex align-items-center bg-light p-3 rounded-3 border">
                             <div class="avatar-xs bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width: 32px; height: 32px;">
-                                {{ auth()->user()->supervisor ? substr(auth()->user()->supervisor->name, 0, 1) : '?' }}
+                                {{ $mySupervisor ? substr($mySupervisor->name, 0, 1) : '?' }}
                             </div>
                             <div>
-                                <h6 class="mb-0 fw-bold text-dark">{{ auth()->user()->supervisor ? auth()->user()->supervisor->name : 'No Supervisor Assigned' }}</h6>
+                                <h6 class="mb-0 fw-bold text-dark">{{ $mySupervisor ? $mySupervisor->name : 'No Supervisor Assigned' }}</h6>
                                 <small class="text-muted">PKSF Supervisor (Automatic Forward)</small>
                             </div>
                         </div>
@@ -608,7 +577,7 @@
                 </div>
                 <div class="modal-footer bg-light border-0 p-3 d-flex justify-content-between">
                     <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm" {{ !auth()->user()->supervisor_emp_id ? 'disabled' : '' }}>
+                    <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm" {{ !$mySupervisorEmpId ? 'disabled' : '' }}>
                         <i class="bi bi-check-circle-fill me-2"></i>Submit Request
                     </button>
                 </div>
@@ -647,10 +616,10 @@
                         <label class="form-label small fw-bold text-muted text-uppercase mb-1">Forwarding to Supervisor</label>
                         <div class="d-flex align-items-center bg-light p-3 rounded-3 border">
                             <div class="avatar-xs bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width: 32px; height: 32px;">
-                                {{ auth()->user()->supervisor ? substr(auth()->user()->supervisor->name, 0, 1) : '?' }}
+                                {{ $mySupervisor ? substr($mySupervisor->name, 0, 1) : '?' }}
                             </div>
                             <div>
-                                <h6 class="mb-0 fw-bold text-dark">{{ auth()->user()->supervisor ? auth()->user()->supervisor->name : 'No Supervisor Assigned' }}</h6>
+                                <h6 class="mb-0 fw-bold text-dark">{{ $mySupervisor ? $mySupervisor->name : 'No Supervisor Assigned' }}</h6>
                                 <small class="text-muted">PKSF Supervisor (Automatic Forward)</small>
                             </div>
                         </div>
@@ -691,7 +660,7 @@
                 </div>
                 <div class="modal-footer bg-light border-0 p-3 d-flex justify-content-between">
                     <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning px-4 rounded-pill shadow-sm" {{ !auth()->user()->supervisor_emp_id ? 'disabled' : '' }}>
+                    <button type="submit" class="btn btn-warning px-4 rounded-pill shadow-sm" {{ !$mySupervisorEmpId ? 'disabled' : '' }}>
                         <i class="bi bi-send-fill me-2"></i>Send to Supervisor
                     </button>
                 </div>
@@ -873,336 +842,69 @@
     .btn-white { background: #fff; border: 1px solid #f0f0f0; }
     .btn-white:hover { background: #f8f9fa; }
 
-    /* =====================================================
-       PO Comment Modal — Scoped Styles  [Slate & Clean White]
-    ====================================================== */
-    .po-comment-dialog { max-width: 580px; }
-    .po-comment-modal {
-        box-shadow: 0 20px 50px rgba(45,55,72,0.22) !important;
-        border-radius: 14px !important;
-        border: none !important;
+    /* ── PO Comment Modal — upload zone states ── */
+    #cmUploadZone:hover:not(.cm-zone-full),
+    #cmUploadZone.cm-drag-over {
+        border-color: #1b3a3a !important;
+        background: #f0f4f4 !important;
     }
+    #cmUploadZone.cm-zone-full { cursor: default; background: #f0f9ff !important; border-color: #90cdf4 !important; }
 
-    /* ── Header ──────────────────────────────────────────── */
-    .po-cm-header {
-        background: #2d3748;
-        border-radius: 14px 14px 0 0;
-    }
-    .po-cm-kicker {
-        font-size: 0.67rem;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.5);
-        display: block;
-    }
-    .po-cm-title {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #ffffff;
-        letter-spacing: -0.1px;
-        line-height: 1.25;
-    }
+    /* ── Meta chips (JS-generated in modal header) ── */
     .po-cm-meta-chip {
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.18);
-        border-radius: 6px;
-        color: rgba(255,255,255,0.82);
         font-size: 0.72rem;
         font-weight: 600;
         padding: 3px 9px;
+        border-radius: 6px;
         display: inline-flex;
         align-items: center;
         gap: 4px;
+        border: 1px solid #dee2e6;
+        background: #f8f9fa;
+        color: #495057;
     }
-    .po-cm-chip-high   { background: rgba(252,129,74,0.25) !important; border-color: rgba(252,129,74,0.4) !important; color: #fca97e !important; }
-    .po-cm-chip-medium { background: rgba(236,201,75,0.2)  !important; border-color: rgba(236,201,75,0.35) !important; color: #f0d070 !important; }
-    .po-cm-chip-low    { background: rgba(104,211,145,0.2) !important; border-color: rgba(104,211,145,0.35) !important; color: #9ae6b4 !important; }
+    /* PO code */
+    .po-cm-chip-po       { background: rgba(27,58,58,0.08); border-color: #1b3a3a; color: #1b3a3a; }
+    /* Category */
+    .po-cm-chip-category { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+    /* Priority */
+    .po-cm-chip-high     { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+    .po-cm-chip-medium   { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+    .po-cm-chip-low      { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+    /* Date */
+    .po-cm-chip-date     { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; }
 
-    /* ── Context section ─────────────────────────────────── */
-    .po-cm-context {
-        background: #f7f8fa;
-        border-bottom: 1px solid #e8eaed;
-    }
-    .po-cm-context-label {
-        font-size: 0.67rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #718096;
-        margin-bottom: 8px;
-    }
-    .po-cm-obs-text {
-        font-size: 0.875rem;
-        color: #2d3748;
-        line-height: 1.65;
-        border-left: 3px solid #2d3748;
-        padding-left: 12px;
-        max-height: 90px;
-        overflow-y: auto;
-        white-space: pre-line;
-        scrollbar-width: thin;
-    }
-    .po-cm-obs-text::-webkit-scrollbar { width: 4px; }
-    .po-cm-obs-text::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
-
-    /* ── Labels ──────────────────────────────────────────── */
-    .po-cm-label {
-        font-weight: 700;
-        font-size: 0.84rem;
-        color: #2d3748;
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-    }
-    .po-cm-label-hint {
-        font-size: 0.75rem;
-        color: #a0aec0;
-    }
-
-    /* ── Textarea ────────────────────────────────────────── */
-    .po-cm-textarea {
-        border: 1.5px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        line-height: 1.65;
-        resize: vertical;
-        color: #2d3748;
-        background: #ffffff;
-        transition: border-color 0.18s, box-shadow 0.18s;
-    }
-    .po-cm-textarea:focus {
-        border-color: #2d3748;
-        box-shadow: 0 0 0 3px rgba(45,55,72,0.1);
-        outline: none;
-    }
-    .po-cm-textarea.is-invalid { border-color: #e53e3e !important; }
-    .po-cm-field-hint {
-        font-size: 0.74rem;
-        color: #a0aec0;
-        flex: 1;
-    }
-    .po-cm-charcount {
-        font-size: 0.74rem;
-        color: #b0bec5;
-        font-variant-numeric: tabular-nums;
-        white-space: nowrap;
-        margin-left: 10px;
-    }
-
-    /* ── File count badge ────────────────────────────────── */
-    .po-cm-file-count-badge {
-        font-size: 0.74rem;
-        font-weight: 700;
-        color: #4a5568;
-        background: #edf2f7;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 3px 10px;
-    }
-
-    /* ── Upload zone ─────────────────────────────────────── */
-    .po-cm-upload-zone {
-        border: 1.5px dashed #cbd5e0;
-        border-radius: 10px;
-        background: #f7f8fa;
-        padding: 20px;
-        cursor: pointer;
-        transition: border-color 0.18s, background 0.18s;
-        min-height: 72px;
-    }
-    .po-cm-upload-zone:hover:not(.cm-zone-full),
-    .po-cm-upload-zone.cm-drag-over {
-        border-color: #2d3748;
-        background: #edf2f7;
-    }
-    .po-cm-upload-zone.cm-zone-full {
-        cursor: default;
-        border-style: solid;
-        border-color: #bee3f8;
-        background: #ebf8ff;
-    }
-
-    /* Upload prompt */
-    .po-cm-upload-prompt {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        text-align: center;
-        padding: 4px 0;
-        pointer-events: none;
-    }
-    .po-cm-upload-icon-wrap {
-        width: 44px;
-        height: 44px;
-        background: #e2e8f0;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.4rem;
-        color: #4a5568;
-        margin-bottom: 2px;
-    }
-    .po-cm-upload-action {
-        font-weight: 700;
-        color: #2d3748;
-        text-decoration: underline;
-        text-underline-offset: 2px;
-    }
-    .po-cm-upload-or { color: #718096; font-size: 0.85rem; }
-    .po-cm-upload-types { font-size: 0.73rem; color: #a0aec0; }
-
-    /* ── File pills ──────────────────────────────────────── */
+    /* ── File pills (JS-generated) ── */
     .po-cm-file-pill {
         display: flex;
         align-items: center;
         gap: 10px;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: #fff;
+        border: 1px solid #dee2e6;
         border-radius: 8px;
-        padding: 9px 13px;
-        margin-bottom: 7px;
-        transition: border-color 0.15s, box-shadow 0.15s;
+        padding: 8px 12px;
+        margin-bottom: 6px;
     }
-    .po-cm-file-pill:hover { border-color: #cbd5e0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
     .po-cm-file-pill:last-child { margin-bottom: 0; }
-    .po-cm-file-pill-icon { color: #4a5568; font-size: 1.05rem; flex: 0 0 auto; }
-    .po-cm-file-pill-name {
-        flex: 1;
-        min-width: 0;
-        font-size: 0.84rem;
-        font-weight: 600;
-        color: #2d3748;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .po-cm-file-pill-size { font-size: 0.72rem; color: #a0aec0; flex: 0 0 auto; white-space: nowrap; }
+    .po-cm-file-pill-icon { color: #6c757d; font-size: 1rem; flex-shrink: 0; }
+    .po-cm-file-pill-name { flex: 1; min-width: 0; font-size: 0.84rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .po-cm-file-pill-size { font-size: 0.72rem; color: #adb5bd; flex-shrink: 0; white-space: nowrap; }
     .po-cm-file-pill-remove {
-        background: #f7f8fa;
-        border: 1px solid #e2e8f0;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
         border-radius: 50%;
-        color: #a0aec0;
+        color: #adb5bd;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 26px;
-        height: 26px;
-        flex: 0 0 auto;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
         padding: 0;
-        line-height: 1;
-        transition: background 0.15s, color 0.15s, border-color 0.15s;
+        transition: background 0.15s, color 0.15s;
     }
-    .po-cm-file-pill-remove:hover { background: #fff5f5; border-color: #fed7d7; color: #e53e3e; }
-
-    /* ── Add another file button ─────────────────────────── */
-    .po-cm-btn-add-file {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #4a5568;
-        background: transparent;
-        border: 1.5px dashed #cbd5e0;
-        border-radius: 8px;
-        padding: 6px 16px;
-        transition: all 0.15s;
-        cursor: pointer;
-    }
-    .po-cm-btn-add-file:hover {
-        background: #edf2f7;
-        border-color: #2d3748;
-        border-style: dashed;
-        color: #2d3748;
-    }
-
-    /* ── Routing card ────────────────────────────────────── */
-    .po-cm-routing-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        background: #f7f8fa;
-        padding: 14px 16px;
-    }
-    .po-cm-routing-inner { display: flex; align-items: center; gap: 12px; }
-    .po-cm-supervisor-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: #2d3748;
-        color: #ffffff;
-        font-size: 0.88rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 0 0 auto;
-        box-shadow: 0 2px 6px rgba(45,55,72,0.25);
-    }
-    .po-cm-routing-info { flex: 1; min-width: 0; }
-    .po-cm-routing-name {
-        font-weight: 700;
-        font-size: 0.88rem;
-        color: #2d3748;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .po-cm-routing-role { font-size: 0.74rem; color: #718096; margin-top: 2px; }
-    .po-cm-routing-status-badge {
-        flex: 0 0 auto;
-        font-size: 0.72rem;
-        font-weight: 700;
-        border-radius: 6px;
-        padding: 4px 10px;
-        display: inline-flex;
-        align-items: center;
-    }
-    .po-cm-badge-assigned { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
-    .po-cm-badge-warn     { background: #fffaf0; color: #975a16; border: 1px solid #feebc8; }
-
-    /* ── Footer ──────────────────────────────────────────── */
-    .po-cm-footer {
-        background: #f7f8fa;
-        border-top: 1px solid #e8eaed !important;
-        border-radius: 0 0 14px 14px;
-    }
-    /* Cancel — neutral, dismissive */
-    .po-cm-btn-cancel {
-        color: #718096;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        font-weight: 600;
-        font-size: 0.875rem;
-    }
-    .po-cm-btn-cancel:hover { background: #f7fafc; border-color: #cbd5e0; color: #4a5568; }
-
-    /* Save Draft — amber, "not final yet" */
-    .po-cm-btn-draft {
-        color: #92400e;
-        background: #fffbeb;
-        border: 1.5px solid #f6d860;
-        font-weight: 700;
-        font-size: 0.875rem;
-    }
-    .po-cm-btn-draft:hover { background: #fef3c7; border-color: #d97706; color: #78350f; }
-
-    /* Submit to Supervisor — blue, primary action */
-    .po-cm-btn-forward {
-        background: #2b6cb0;
-        color: #ffffff;
-        border: none;
-        font-weight: 700;
-        font-size: 0.875rem;
-        box-shadow: 0 2px 8px rgba(43,108,176,0.3);
-        transition: background 0.15s, box-shadow 0.15s;
-    }
-    .po-cm-btn-forward:hover:not(:disabled) {
-        background: #2c5282;
-        color: #ffffff;
-        box-shadow: 0 4px 14px rgba(43,108,176,0.4);
-    }
-    .po-cm-btn-forward:disabled { opacity: 0.45; cursor: not-allowed; }
+    .po-cm-file-pill-remove:hover { background: #f8d7da; border-color: #f5c2c7; color: #dc3545; }
 </style>
 
 @push('scripts')
@@ -1652,10 +1354,10 @@
             const pColors = { HIGH: 'po-cm-chip-high', MEDIUM: 'po-cm-chip-medium', LOW: 'po-cm-chip-low' };
             const pClass  = pColors[priority] || '';
             $('#cm_meta_row').html(`
-                <span class="po-cm-meta-chip"><i class="bi bi-building"></i>${cmEscape(poCode)}</span>
-                <span class="po-cm-meta-chip"><i class="bi bi-tag"></i>${cmEscape(category)}</span>
-                ${priority ? `<span class="po-cm-meta-chip ${pClass}"><i class="bi bi-flag"></i>${cmEscape(priority)} Priority</span>` : ''}
-                <span class="po-cm-meta-chip"><i class="bi bi-calendar3"></i>${cmEscape(visitDate)}</span>
+                <span class="po-cm-meta-chip po-cm-chip-po"><i class="bi bi-building me-1"></i>${cmEscape(poCode)}</span>
+                <span class="po-cm-meta-chip po-cm-chip-category"><i class="bi bi-tag me-1"></i>${cmEscape(category)}</span>
+                ${priority ? `<span class="po-cm-meta-chip ${pClass}"><i class="bi bi-flag me-1"></i>${cmEscape(priority)} Priority</span>` : ''}
+                <span class="po-cm-meta-chip po-cm-chip-date"><i class="bi bi-calendar3 me-1"></i>${cmEscape(visitDate)}</span>
             `);
 
             // Fetch existing draft from server, then show modal
