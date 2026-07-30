@@ -31,7 +31,7 @@
     <!-- Header Section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="display-6 fw-bold text-gradient mb-1">Follow-up Action Matrix List</h2>
+            <h2 class="display-6 fw-bold text-gradient mb-1">Follow-up Observation List</h2>
             @if(auth()->user()->isPksf())
                 <p class="text-muted">Manage and track all observations and PO responses.</p>
             @else
@@ -110,13 +110,41 @@
     <!-- Table Section -->
     <div class="card border-0 shadow-lg rounded-4 overflow-hidden glass-card">
         <div class="card-body p-0">
+
+            <!-- Tabs -->
+            <div class="px-4 pt-3 border-bottom bg-white">
+                <ul class="nav nav-tabs border-0" id="matrixTabs">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-semibold px-4" id="tab-action" data-tab="action_required">
+                            <i class="bi bi-exclamation-circle me-1"></i>Action Required
+                            @if($stats['action_required'] > 0)
+                                <span class="badge rounded-pill bg-danger ms-1">{{ $stats['action_required'] }}</span>
+                            @endif
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-semibold px-4" id="tab-ongoing" data-tab="ongoing">
+                            <i class="bi bi-arrow-repeat me-1"></i>Ongoing
+                            @if($stats['in_progress'] > 0)
+                                <span class="badge rounded-pill bg-warning text-dark ms-1">{{ $stats['in_progress'] }}</span>
+                            @endif
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-semibold px-4" id="tab-all" data-tab="all">
+                            <i class="bi bi-list-ul me-1"></i>All Observations
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
             <!-- Filter Bar -->
             <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
                 <i class="bi bi-funnel text-primary me-1" style="font-size:1.1rem;"></i>
                 <strong style="font-size:.875rem;color:#37474f;margin-right:.25rem;">Filters:</strong>
 
-                {{-- Dropdown 1: View --}}
-                <select id="filterView" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:170px;">
+                {{-- Dropdown 1: View (hidden on Action Required tab) --}}
+                <select id="filterView" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:170px; display:none;">
                     <option value="all">All Matrices</option>
                     <option value="action_required">Action Required</option>
                     @if(auth()->user()->isPksf())
@@ -154,7 +182,7 @@
                     <thead>
                         <tr>
                             <th class="border-0">ACM ID</th>
-                            <th class="border-0">PO Code</th>
+                            <th class="border-0 text-center">PO Code</th>
                             <th class="border-0">Visit Date</th>
                             <th class="border-0">Category</th>
                             <th class="border-0">Priority</th>
@@ -234,15 +262,16 @@
 </div>
 
 <!-- Comment Modal (PO Officer) -->
-<div class="modal fade" id="commentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:560px;">
+<div class="modal fade" id="commentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:780px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
 
             <!-- Header -->
-            <div class="modal-header border-bottom px-4 py-3">
+            <div class="modal-header border-bottom px-4 py-3" style="background:rgba(27,58,58,0.05);">
                 <div class="flex-grow-1 min-w-0 me-3">
-                    <h5 class="fw-bold mb-0" id="cm_acm_id_display">—</h5>
-                    <div class="d-flex flex-wrap gap-2 mt-2" id="cm_meta_row"></div>
+                    <div class="d-flex flex-wrap align-items-center gap-2" id="cm_meta_row">
+                        <span class="po-cm-meta-chip fw-bold" id="cm_acm_id_display" style="background:#1b3a3a;color:#fff;border-color:#1b3a3a;">—</span>
+                    </div>
                 </div>
                 <button type="button" class="btn-close flex-shrink-0" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -252,18 +281,51 @@
                 <input type="hidden" name="acm_id" id="comment_acm_id">
                 <input type="hidden" name="forward_to_supervisor" id="cm_forward_flag" value="0">
                 <input type="hidden" name="comment_sl" id="comment_sl" value="">
+            </form>
 
-                <div class="modal-body px-4 py-3">
+            <div class="modal-body px-4 py-3">
 
                     <!-- Observation context -->
-                    <div class="bg-light rounded-3 p-3 mb-3" style="border-left:3px solid #6c757d;">
-                        <p class="text-muted mb-1" style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Observation</p>
+                    <div class="fw-bold small mb-2">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded me-2"
+                              style="width:20px;height:20px;background:#1b3a3a;">
+                            <i class="bi bi-eye-fill text-white" style="font-size:0.6rem;"></i>
+                        </span>PKSF Observation
+                    </div>
+                    <div class="bg-light rounded-3 p-3 mb-3" style="border-left:4px solid #1b3a3a;">
                         <div class="small text-dark" id="cm_observation_text" style="max-height:80px;overflow-y:auto;line-height:1.6;">—</div>
+                    </div>
+
+                    <!-- PKSF Direction -->
+                    <div class="fw-bold small mb-2">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded me-2"
+                              style="width:20px;height:20px;background:#1b3a3a;">
+                            <i class="bi bi-arrow-right-circle-fill text-white" style="font-size:0.6rem;"></i>
+                        </span>PKSF Direction
+                    </div>
+                    <div class="bg-light rounded-3 p-3 mb-3" style="border-left:4px solid #1b3a3a;">
+                        <div class="small text-dark" id="cm_direction_text" style="max-height:80px;overflow-y:auto;line-height:1.6;">—</div>
+                    </div>
+
+                    <!-- PKSF Attachments (read-only) -->
+                    <div class="cm-pksf-att-section mb-3">
+                        <div class="fw-bold small mb-2">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded me-2"
+                                  style="width:20px;height:20px;background:#1b3a3a;">
+                                <i class="bi bi-paperclip text-white" style="font-size:0.6rem;"></i>
+                            </span>PKSF Attachments
+                        </div>
+                        <div id="cm_pksf_attachments" class="d-flex flex-wrap"></div>
                     </div>
 
                     <!-- Response textarea -->
                     <div class="mb-3">
-                        <label for="comment_detail" class="form-label fw-bold small">Your Response</label>
+                        <label for="comment_detail" class="form-label fw-bold small">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded me-2"
+                                  style="width:20px;height:20px;background:#0369a1;">
+                                <i class="bi bi-pencil-fill text-white" style="font-size:0.6rem;"></i>
+                            </span>Your Response
+                        </label>
                         <textarea
                             name="comment_detail"
                             id="comment_detail"
@@ -281,15 +343,20 @@
                     <!-- Attachments -->
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="form-label fw-bold small mb-0">Attachments <span class="text-muted fw-normal">(optional)</span></label>
+                            <label class="form-label fw-bold small mb-0">
+                                <span class="d-inline-flex align-items-center justify-content-center rounded me-2"
+                                      style="width:20px;height:20px;background:#0369a1;">
+                                    <i class="bi bi-paperclip text-white" style="font-size:0.6rem;"></i>
+                                </span>Your Attachments <span class="text-muted fw-normal">(optional)</span>
+                            </label>
                             <span class="badge bg-light text-dark border" style="font-size:0.75rem;" id="cmFileCountBadge">0 / 3</span>
                         </div>
-                        <div id="cmUploadZone" class="border rounded-3 p-3 text-center"
+                        <div id="cmUploadZone" class="border rounded-3 px-3 py-3 text-center"
                              style="cursor:pointer;background:#fafafa;transition:background 0.15s,border-color 0.15s;">
-                            <div id="cmUploadPrompt">
-                                <i class="bi bi-paperclip text-muted mb-1 d-block" style="font-size:1.3rem;"></i>
+                            <div id="cmUploadPrompt" class="d-flex align-items-center justify-content-center gap-2">
+                                <i class="bi bi-paperclip text-muted" style="font-size:1rem;"></i>
                                 <span class="small text-muted">Click to attach files</span>
-                                <span class="d-block text-muted" style="font-size:0.72rem;">PDF · Word · Excel · Images · max 30 MB</span>
+                                <span class="text-muted" style="font-size:0.72rem;">· PDF · Word · Excel · Images · max 30 MB</span>
                             </div>
                             <div id="cmFileList" style="display:none;text-align:left;"></div>
                             <div id="cmAddMoreWrap" class="mt-2" style="display:none;">
@@ -303,9 +370,15 @@
                     </div>
 
                     <!-- Routing info -->
-                    <div id="po_routing_card" class="d-flex align-items-center gap-3 bg-light rounded-3 p-3 border">
+                    <div class="fw-bold small mb-2 mt-1">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded me-2"
+                              style="width:20px;height:20px;background:#d97706;">
+                            <i class="bi bi-send-fill text-white" style="font-size:0.6rem;"></i>
+                        </span>Routing
+                    </div>
+                    <div id="po_routing_card" class="d-flex align-items-center gap-3 bg-light rounded-3 p-2 border" style="border-left:4px solid #d97706 !important;">
                         <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
-                             style="width:38px;height:38px;background:#1b3a3a;font-size:0.85rem;">
+                             style="width:34px;height:34px;background:#1b3a3a;font-size:0.8rem;">
                             {{ $mySupervisor ? strtoupper(substr($mySupervisor->name, 0, 1)) : '?' }}
                         </div>
                         <div class="flex-grow-1 min-w-0">
@@ -325,23 +398,21 @@
                         </div>
                     @endif
 
-                </div>
+            </div>
 
-                <!-- Footer -->
-                <div class="modal-footer border-top px-4 py-3">
-                    <button type="button" class="btn btn-outline-danger rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <div class="d-flex gap-2 ms-auto">
-                        <button type="submit" id="btnSaveDraft" class="btn btn-warning rounded-pill px-4">
-                            <i class="bi bi-floppy2 me-2"></i>Save Draft
-                        </button>
-                        <button type="submit" id="btnSaveForward" class="btn btn-primary rounded-pill px-4"
-                                {{ !$mySupervisorEmpId ? 'disabled' : '' }}>
-                            <i class="bi bi-send-fill me-2"></i>Submit to Supervisor
-                        </button>
-                    </div>
+            <!-- Footer -->
+            <div class="modal-footer border-0 px-4 py-2" style="background:rgba(27,58,58,0.04);">
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
+                <div class="d-flex gap-2 ms-auto">
+                    <button type="submit" form="commentForm" id="btnSaveDraft" class="btn btn-sm btn-warning rounded-pill px-4 fw-semibold shadow-sm">
+                        <i class="bi bi-floppy2 me-1"></i>Save Draft
+                    </button>
+                    <button type="submit" form="commentForm" id="btnSaveForward" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm"
+                            {{ !$mySupervisorEmpId ? 'disabled' : '' }}>
+                        <i class="bi bi-send-fill me-1"></i>Submit to Supervisor
+                    </button>
                 </div>
-
-            </form>
+            </div>
         </div>
     </div>
 </div>
@@ -779,6 +850,23 @@
     }
     .cursor-not-allowed { cursor: not-allowed !important; }
 
+    /* ── Matrix tabs ── */
+    #matrixTabs .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        border-radius: 0;
+        color: #6c757d;
+        font-size: 0.875rem;
+        padding-bottom: 0.75rem;
+        transition: color 0.15s, border-color 0.15s;
+    }
+    #matrixTabs .nav-link:hover { color: #1b3a3a; }
+    #matrixTabs .nav-link.active {
+        color: #1b3a3a;
+        border-bottom-color: #1b3a3a;
+        background: transparent;
+    }
+
     .search-wrapper { position: relative; }
     .search-wrapper i {
         position: absolute;
@@ -864,15 +952,15 @@
         color: #495057;
     }
     /* PO code */
-    .po-cm-chip-po       { background: rgba(27,58,58,0.08); border-color: #1b3a3a; color: #1b3a3a; }
+    .po-cm-chip-po       { background: #2d6a6a; border-color: #2d6a6a; color: #fff; }
     /* Category */
-    .po-cm-chip-category { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+    .po-cm-chip-category { background: #5b21b6; border-color: #5b21b6; color: #fff; }
     /* Priority */
-    .po-cm-chip-high     { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
-    .po-cm-chip-medium   { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
-    .po-cm-chip-low      { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+    .po-cm-chip-high     { background: #dc2626; border-color: #dc2626; color: #fff; }
+    .po-cm-chip-medium   { background: #d97706; border-color: #d97706; color: #fff; }
+    .po-cm-chip-low      { background: #059669; border-color: #059669; color: #fff; }
     /* Date */
-    .po-cm-chip-date     { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; }
+    .po-cm-chip-date     { background: #0369a1; border-color: #0369a1; color: #fff; }
 
     /* ── File pills (JS-generated) ── */
     .po-cm-file-pill {
@@ -969,7 +1057,9 @@
             const cat      = escAttr(row.observation_category);
             const pri      = escAttr(row.priority);
             const vd       = escAttr(row.visiting_date);
-            const obs      = escAttr(row._pksf_observation || '');
+            const obs      = escAttr(row._pksf_observation  || '');
+            const dir      = escAttr(row._direction_to_po   || '');
+            const pksfatts = encodeURIComponent(JSON.stringify(row._pksf_attachments || []));
 
             let btns = '';
 
@@ -1039,6 +1129,7 @@
                                      data-acmid="${id}" data-pocode="${pc}"
                                      data-category="${cat}" data-priority="${pri}"
                                      data-visitdate="${vd}" data-observation="${obs}"
+                                     data-direction="${dir}" data-pksfatts="${pksfatts}"
                                      title="Write / Edit Response">
                                 <i class="bi bi-chat-dots me-1"></i>Comment</button>`;
                     if (row._has_comments) {
@@ -1087,14 +1178,21 @@
                 url: '{{ route("action-matrix.data") }}',
                 type: 'GET',
                 data: function (d) {
-                    d.view     = $('#filterView').val();
+                    const activeTab = $('#matrixTabs .nav-link.active').data('tab');
+                    if (activeTab === 'action_required') {
+                        d.view = 'action_required';
+                    } else if (activeTab === 'ongoing') {
+                        d.view = 'ongoing';
+                    } else {
+                        d.view = $('#filterView').val();
+                    }
                     d.po_code  = $('#filterPo').val();
                     d.priority = $('#filterPriority').val();
                 }
             },
             columns: [
                 { data: 'acm_id',               orderable: true  },
-                { data: 'po_code',              orderable: true  },
+                { data: 'po_code',              orderable: true,  className: 'text-center' },
                 { data: 'visiting_date',        orderable: true  },
                 { data: 'observation_category', orderable: true  },
                 { data: 'priority',  orderable: true,  render: function(d)          { return renderPriority(d);  } },
@@ -1104,13 +1202,20 @@
             ],
             order: [[0, 'desc']],
             drawCallback: function () {
-                const anyFilter = $('#filterView').val()     !== 'all'
+                const activeTab   = $('#matrixTabs .nav-link.active').data('tab');
+                const isActionTab  = activeTab === 'action_required';
+                const isOngoingTab = activeTab === 'ongoing';
+                const isAllTab     = !isActionTab && !isOngoingTab;
+
+                const anyFilter = isAllTab && (
+                                   $('#filterView').val()     !== 'all'
                                || ($('#filterPo').length && $('#filterPo').val() !== '')
-                               || $('#filterPriority').val() !== '';
+                               || $('#filterPriority').val() !== '');
                 $('#btnClearFilters').toggle(anyFilter);
 
-                const isCompleted = $('#filterView').val() === 'completed';
-                table.column(6).visible(!isCompleted, false);
+                const isCompleted = isAllTab && $('#filterView').val() === 'completed';
+                // Show "Incoming From" only on Action Required tab
+                table.column(6).visible(isActionTab && !isCompleted, false);
             }
         });
 
@@ -1124,6 +1229,24 @@
             if ($('#filterPo').length) $('#filterPo').val('');
             $('#filterPriority').val('');
             $(this).hide();
+            table.ajax.reload();
+        });
+
+        /* ── Tab switching ────────────────────────────────────────────── */
+        $('#matrixTabs .nav-link').on('click', function () {
+            $('#matrixTabs .nav-link').removeClass('active');
+            $(this).addClass('active');
+
+            const tab = $(this).data('tab');
+            const isActionTab  = tab === 'action_required';
+            const isOngoingTab = tab === 'ongoing';
+            // Hide View dropdown on Action Required and Ongoing tabs (tab controls the view)
+            $('#filterView').toggle(!isActionTab && !isOngoingTab);
+            // Reset other filters on tab switch
+            if ($('#filterPo').length) $('#filterPo').val('');
+            $('#filterPriority').val('');
+            $('#btnClearFilters').hide();
+
             table.ajax.reload();
         });
 
@@ -1319,8 +1442,9 @@
             $('#comment_detail').removeClass('is-invalid');
             $('#cm_forward_flag').val('0');
             $('#comment_sl').val('');
-            // Reset kicker to default (new response mode)
             $('.po-cm-kicker').html('<i class="bi bi-building me-1"></i>PO Official Response');
+            $('#cm_pksf_attachments').html('');
+            $('.cm-pksf-att-section').hide();
         }
 
         // Pre-populate modal with an existing draft from the server
@@ -1345,15 +1469,35 @@
             const category = $(this).data('category') || '—';
             const priority = $(this).data('priority') || '';
             const visitDate= $(this).data('visitdate')|| '—';
-            const obs      = $(this).data('observation') || 'No observation text available.';
+            const obs        = $(this).data('observation') || 'No observation text available.';
+            const dir        = $(this).data('direction')   || 'No direction provided.';
+            const pksfAtts   = JSON.parse(decodeURIComponent($(this).data('pksfatts') || '%5B%5D'));
 
             $('#comment_acm_id').val(acmId);
-            $('#cm_acm_id_display').text(acmId);
             $('#cm_observation_text').text(obs);
+            $('#cm_direction_text').text(dir);
+
+            // Render PKSF attachments
+            const $attWrap = $('#cm_pksf_attachments');
+            if (pksfAtts.length) {
+                $attWrap.closest('.cm-pksf-att-section').show();
+                $attWrap.html(pksfAtts.map(f => {
+                    const url  = '/storage/' + f.path;
+                    const size = f.size ? ' (' + (f.size / 1024).toFixed(0) + ' KB)' : '';
+                    return `<a href="${url}" target="_blank" class="d-inline-flex align-items-center gap-1 text-decoration-none me-2 mb-1 px-2 py-1 border rounded-2 bg-white small">
+                                <i class="bi bi-file-earmark-arrow-down text-primary"></i>
+                                <span class="text-dark">${cmEscape(f.name || 'File')}</span>
+                                <span class="text-muted" style="font-size:0.7rem;">${size}</span>
+                            </a>`;
+                }).join(''));
+            } else {
+                $attWrap.closest('.cm-pksf-att-section').hide();
+            }
 
             const pColors = { HIGH: 'po-cm-chip-high', MEDIUM: 'po-cm-chip-medium', LOW: 'po-cm-chip-low' };
             const pClass  = pColors[priority] || '';
             $('#cm_meta_row').html(`
+                <span class="po-cm-meta-chip fw-bold" id="cm_acm_id_display" style="background:#1b3a3a;color:#fff;border-color:#1b3a3a;">${cmEscape(acmId)}</span>
                 <span class="po-cm-meta-chip po-cm-chip-po"><i class="bi bi-building me-1"></i>${cmEscape(poCode)}</span>
                 <span class="po-cm-meta-chip po-cm-chip-category"><i class="bi bi-tag me-1"></i>${cmEscape(category)}</span>
                 ${priority ? `<span class="po-cm-meta-chip ${pClass}"><i class="bi bi-flag me-1"></i>${cmEscape(priority)} Priority</span>` : ''}

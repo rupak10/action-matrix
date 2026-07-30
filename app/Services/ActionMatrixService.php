@@ -86,6 +86,9 @@ class ActionMatrixService
             case 'created_by_me':
                 $base->where('created_by', $user->emp_id);
                 break;
+            case 'ongoing':
+                $base->whereNotIn('status', ['SAVED', 'CLOSED']);
+                break;
             case 'completed':
                 $base->where('status', 'CLOSED');
                 break;
@@ -143,6 +146,11 @@ class ActionMatrixService
             ->get()
             ->groupBy('acm_id');
 
+        $pksfAttachments = DB::table('acm_master_file_attachment')
+            ->whereIn('acm_id', $acmIds)
+            ->get(['acm_id', 'file_name', 'file_path', 'file_size'])
+            ->groupBy('acm_id');
+
         $poMovements = DB::table('acm_po_movements')
             ->whereIn('acm_id', $acmIds)
             ->get()
@@ -166,7 +174,7 @@ class ActionMatrixService
             ->pluck('name', 'emp_id');
 
         // ── Build data rows ───────────────────────────────────────────────
-        $data = $rows->map(function ($matrix) use ($pksfMovements, $poMovements, $usersByEmpId, $user) {
+        $data = $rows->map(function ($matrix) use ($pksfMovements, $poMovements, $pksfAttachments, $usersByEmpId, $user) {
 
             // Latest incoming movement for this matrix
             $allMoves = collect($pksfMovements->get($matrix->acm_id, collect()))
@@ -199,6 +207,13 @@ class ActionMatrixService
                 '_current_desk_emp_id' => $matrix->current_desk_emp_id,
                 '_created_by'          => $matrix->created_by,
                 '_pksf_observation'    => $matrix->pksf_observation,
+                '_direction_to_po'     => $matrix->direction_to_po,
+                '_pksf_attachments'    => $pksfAttachments->get($matrix->acm_id, collect())
+                                            ->map(fn($f) => [
+                                                'name' => $f->file_name,
+                                                'path' => $f->file_path,
+                                                'size' => $f->file_size,
+                                            ])->values()->toArray(),
                 '_has_comments'        => DB::table('acm_comments')
                                             ->where('acm_id', $matrix->acm_id)
                                             ->exists(),

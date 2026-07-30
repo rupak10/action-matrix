@@ -24,7 +24,7 @@
         :root {
             --sl-primary: #1b3a3a;
             --sl-primary-soft: rgba(27, 58, 58, 0.08);
-            --sl-bg: #f4f7f7;
+            --sl-bg: #f0f2f5;
             --sl-surface: #ffffff;
             --sl-text: #1b2525;
             --sl-muted: #748181;

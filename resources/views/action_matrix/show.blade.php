@@ -49,7 +49,7 @@
 @endphp
 
 <div class="container-fluid action-detail-page py-2">
-    <div class="detail-hero mb-4">
+    <div class="detail-hero mb-3">
         <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
             <div>
                 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
@@ -75,22 +75,22 @@
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-3">
         <div class="col-lg-8">
             <section class="detail-section h-100">
-                <div class="section-heading">
-                    <div>
-                        <h2>Matrix Summary</h2>
-                        <p>Core tracking information for this observation.</p>
+                <div class="section-heading" style="background:#1e3a5f;margin:-16px -16px 14px;padding:12px 16px;border-radius:12px 12px 0 0;">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;flex-shrink:0;">
+                            <i class="bi bi-clipboard2-data"></i>
+                        </span>
+                        <div>
+                            <h2 style="color:#fff;">Matrix Summary</h2>
+                            <p style="color:rgba(255,255,255,0.7);">Core tracking information for this observation.</p>
+                        </div>
                     </div>
-                    <i class="bi bi-clipboard2-data"></i>
                 </div>
 
                 <div class="summary-grid">
-                    <div class="summary-item">
-                        <span>Observation Department</span>
-                        <strong>{{ $master->observation_dept ?? 'N/A' }}</strong>
-                    </div>
                     <div class="summary-item">
                         <span>Observation Category</span>
                         <strong>{{ $master->observation_category ?? 'N/A' }}</strong>
@@ -115,22 +115,22 @@
                         <span>Action Matrix Required</span>
                         <strong>{{ $master->action_matrix === 'Y' ? 'Yes' : 'No' }}</strong>
                     </div>
-                    <div class="summary-item">
-                        <span>PO Editable</span>
-                        <strong>{{ $master->is_editable_by_po === 'Y' ? 'Yes' : 'No' }}</strong>
-                    </div>
                 </div>
             </section>
         </div>
 
         <div class="col-lg-4">
             <section class="detail-section h-100">
-                <div class="section-heading">
-                    <div>
-                        <h2>Desk Control</h2>
-                        <p>Ownership and routing position.</p>
+                <div class="section-heading" style="background:#1e3a5f;margin:-16px -16px 14px;padding:12px 16px;border-radius:12px 12px 0 0;">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;flex-shrink:0;">
+                            <i class="bi bi-person-lines-fill"></i>
+                        </span>
+                        <div>
+                            <h2 style="color:#fff;">Desk Control</h2>
+                            <p style="color:rgba(255,255,255,0.7);">Ownership and routing position.</p>
+                        </div>
                     </div>
-                    <i class="bi bi-person-lines-fill"></i>
                 </div>
 
                 @if($incomingAssignment)
@@ -156,7 +156,7 @@
 
                         <div class="assignment-meta">
                             @unless($isPoUser)
-                                <span><i class="bi bi-send-check"></i>{{ \Illuminate\Support\Str::headline($incomingAssignment['action_type']) }}</span>
+                                <span><i class="bi bi-send-check"></i>{{ ucwords(strtolower(str_replace('_', ' ', $incomingAssignment['action_type']))) }}</span>
                             @endunless
                             <span><i class="bi bi-calendar-event"></i>{{ $formatDateTime($incomingAssignment['created_at']) }}</span>
                         </div>
@@ -199,15 +199,19 @@
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-3">
         <div class="col-xl-7">
             <section class="detail-section h-100">
-                <div class="section-heading">
-                    <div>
-                        <h2>Observation Details</h2>
-                        <p>Original PKSF observation and instruction to PO.</p>
+                <div class="section-heading" style="background:#1e3a5f;margin:-16px -16px 14px;padding:12px 16px;border-radius:12px 12px 0 0;">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;flex-shrink:0;">
+                            <i class="bi bi-journal-text"></i>
+                        </span>
+                        <div>
+                            <h2 style="color:#fff;">Observation Details</h2>
+                            <p style="color:rgba(255,255,255,0.7);">PKSF observation and instruction</p>
+                        </div>
                     </div>
-                    <i class="bi bi-journal-text"></i>
                 </div>
 
                 <div class="text-block mb-3">
@@ -224,12 +228,16 @@
 
         <div class="col-xl-5">
             <section class="detail-section h-100">
-                <div class="section-heading">
-                    <div>
-                        <h2>Original Attachments</h2>
-                        <p>Files uploaded with the initial matrix.</p>
+                <div class="section-heading" style="background:#1e3a5f;margin:-16px -16px 14px;padding:12px 16px;border-radius:12px 12px 0 0;">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;flex-shrink:0;">
+                            <i class="bi bi-paperclip"></i>
+                        </span>
+                        <div>
+                            <h2 style="color:#fff;">Original Attachments</h2>
+                            <p style="color:rgba(255,255,255,0.7);">Files uploaded with the initial observation.</p>
+                        </div>
                     </div>
-                    <i class="bi bi-paperclip"></i>
                 </div>
 
                 <div class="file-list">
@@ -253,13 +261,18 @@
         </div>
     </div>
 
-    <div class="row g-4">
+    <div class="row g-3">
         <div class="col-xl-7">
             <section class="detail-section">
-                <div class="section-heading">
-                    <div>
-                        <h2>Comments & Responses</h2>
-                        <p>Chronological discussion from PKSF and PO users.</p>
+                <div class="section-heading" style="background:#1e3a5f;margin:-16px -16px 14px;padding:12px 16px;border-radius:12px 12px 0 0;">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;flex-shrink:0;">
+                            <i class="bi bi-chat-left-text"></i>
+                        </span>
+                        <div>
+                            <h2 style="color:#fff;">Comments & Responses</h2>
+                            <p style="color:rgba(255,255,255,0.7);">Chronological discussion from PKSF and PO users.</p>
+                        </div>
                     </div>
                     <span class="count-pill">{{ $master->comments->count() }}</span>
                 </div>
@@ -308,10 +321,15 @@
 
         <div class="col-xl-5">
             <section class="detail-section">
-                <div class="section-heading">
-                    <div>
-                        <h2>Movement History</h2>
-                        <p>{{ $isPoUser ? 'PO-side audit trail of approvals, forwards, and rejections.' : 'Audit trail of approvals, forwards, and rejections.' }}</p>
+                <div class="section-heading" style="background:#1e3a5f;margin:-16px -16px 14px;padding:12px 16px;border-radius:12px 12px 0 0;">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;flex-shrink:0;">
+                            <i class="bi bi-clock-history"></i>
+                        </span>
+                        <div>
+                            <h2 style="color:#fff;">Movement History</h2>
+                            <p style="color:rgba(255,255,255,0.7);">Audit trail of approvals, forwards, and rejections.</p>
+                        </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <span class="count-pill">{{ $movementHistory->count() }}</span>
@@ -334,8 +352,8 @@
                                 <div class="movement-marker {{ $movement['source'] === 'PO' ? 'movement-po' : 'movement-pksf' }}"></div>
                                 <div class="movement-content">
                                     <div class="movement-head">
-                                        <strong>{{ \Illuminate\Support\Str::headline($movement['action_type']) }}</strong>
-                                        <span>{{ $movement['source'] }}</span>
+                                        <strong>{{ ucwords(strtolower(str_replace('_', ' ', $movement['action_type']))) }}</strong>
+                                        <span class="{{ $movement['source'] === 'PO' ? 'source-po' : 'source-pksf' }}">{{ $movement['source'] }}</span>
                                     </div>
                                     <div class="movement-route">
                                         <span>{{ $userLabel($movement['from_emp_id']) }}</span>
@@ -393,13 +411,13 @@
     }
 
     .detail-hero {
-        border-radius: 16px;
-        padding: 28px;
+        border-radius: 14px;
+        padding: 18px 22px;
     }
 
     .detail-kicker {
         color: #607070;
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         font-weight: 800;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -407,18 +425,19 @@
 
     .detail-title {
         color: #173434;
-        font-size: clamp(2rem, 4vw, 3.35rem);
+        font-size: clamp(1.4rem, 3vw, 1.9rem);
         font-weight: 800;
         letter-spacing: 0;
-        line-height: 1;
+        line-height: 1.15;
     }
 
     .detail-subtitle {
         color: #667676;
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
         align-items: center;
+        font-size: 0.85rem;
     }
 
     .detail-subtitle strong {
@@ -426,8 +445,8 @@
     }
 
     .detail-dot {
-        width: 5px;
-        height: 5px;
+        width: 4px;
+        height: 4px;
         border-radius: 50%;
         background: #9aa8a8;
         display: inline-block;
@@ -440,48 +459,49 @@
     }
 
     .detail-section {
-        border-radius: 14px;
-        padding: 24px;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
     }
 
     .section-heading {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 16px;
+        gap: 12px;
         border-bottom: 1px solid #eef3f3;
-        padding-bottom: 18px;
-        margin-bottom: 20px;
+        padding-bottom: 12px;
+        margin-bottom: 14px;
     }
 
     .section-heading h2 {
         color: #173434;
-        font-size: 1rem;
+        font-size: 0.9rem;
         font-weight: 800;
-        margin: 0 0 4px;
+        margin: 0 0 2px;
         letter-spacing: 0;
     }
 
     .section-heading p {
         color: #738080;
-        font-size: 0.84rem;
+        font-size: 0.78rem;
         margin: 0;
     }
 
     .section-heading > i {
         color: #1b3a3a;
         background: rgba(27, 58, 58, 0.08);
-        border-radius: 10px;
-        font-size: 1.2rem;
-        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 1rem;
+        padding: 7px 9px;
     }
 
     .assignment-card {
-        background: linear-gradient(135deg, #f4fbf8 0%, #eef7fb 100%);
-        border: 1px solid #cfe2dc;
-        border-radius: 14px;
+        border: 1px solid #edf2f2;
+        border-radius: 10px;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-        padding: 16px;
+        padding: 12px;
     }
 
     .assignment-topline,
@@ -581,10 +601,9 @@
     }
 
     .assignment-remarks {
-        background: rgba(255, 255, 255, 0.78);
-        border-left: 3px solid #1b3a3a;
-        border-radius: 0 10px 10px 0;
-        padding: 11px 12px;
+        border-left: 4px solid #f59e0b;
+        border-radius: 0 8px 8px 0;
+        padding: 8px 12px;
     }
 
     .assignment-remarks p {
@@ -617,15 +636,16 @@
     .summary-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        align-content: stretch;
+        gap: 6px;
+        flex: 1;
     }
 
     .summary-item,
     .desk-row {
-        background: #f7fafa;
         border: 1px solid #edf2f2;
-        border-radius: 10px;
-        padding: 14px;
+        border-radius: 8px;
+        padding: 6px 10px;
     }
 
     .summary-item span,
@@ -633,10 +653,10 @@
     .text-block span {
         color: #718080;
         display: block;
-        font-size: 0.72rem;
+        font-size: 0.67rem;
         font-weight: 800;
         letter-spacing: 0.04em;
-        margin-bottom: 7px;
+        margin-bottom: 4px;
         text-transform: uppercase;
     }
 
@@ -644,46 +664,45 @@
     .desk-row strong {
         color: #1c2929;
         display: block;
-        font-size: 0.94rem;
-        line-height: 1.35;
+        font-size: 0.875rem;
+        line-height: 1.3;
         overflow-wrap: anywhere;
     }
 
     .desk-list {
         display: grid;
-        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
     }
 
     .text-block {
         border-left: 4px solid #1b3a3a;
-        background: #f8fbfb;
-        border-radius: 0 10px 10px 0;
-        padding: 16px 18px;
+        border-radius: 0 8px 8px 0;
+        padding: 12px 14px;
     }
 
     .text-block p {
         color: #243232;
-        font-size: 0.96rem;
-        line-height: 1.65;
+        font-size: 0.9rem;
+        line-height: 1.6;
         margin: 0;
         white-space: pre-line;
     }
 
     .file-list {
         display: grid;
-        gap: 12px;
+        gap: 8px;
     }
 
     .file-row {
         align-items: center;
-        background: #f8fbfb;
         border: 1px solid #e9f0f0;
-        border-radius: 10px;
+        border-radius: 8px;
         color: #1d3030;
         display: grid;
         grid-template-columns: auto 1fr auto;
-        gap: 12px;
-        padding: 14px;
+        gap: 10px;
+        padding: 10px 12px;
         text-decoration: none;
         transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
     }
@@ -698,12 +717,12 @@
     .file-icon {
         align-items: center;
         background: #e8f1f1;
-        border-radius: 10px;
+        border-radius: 8px;
         color: #1b3a3a;
         display: inline-flex;
-        height: 42px;
+        height: 34px;
         justify-content: center;
-        width: 42px;
+        width: 34px;
     }
 
     .file-meta {
@@ -756,13 +775,13 @@
     .comment-timeline,
     .movement-list {
         display: grid;
-        gap: 16px;
+        gap: 10px;
     }
 
     .comment-item {
         display: grid;
         grid-template-columns: auto 1fr;
-        gap: 14px;
+        gap: 10px;
     }
 
     .avatar {
@@ -771,12 +790,12 @@
         color: #fff;
         display: inline-flex;
         flex: 0 0 auto;
-        font-size: 0.78rem;
+        font-size: 0.72rem;
         font-weight: 800;
-        height: 42px;
+        height: 34px;
         justify-content: center;
         margin-top: 2px;
-        width: 42px;
+        width: 34px;
     }
 
     .avatar-primary {
@@ -790,16 +809,16 @@
     .comment-body {
         background: #f8fbfb;
         border: 1px solid #e7eeee;
-        border-radius: 12px;
-        padding: 16px;
+        border-radius: 10px;
+        padding: 10px 12px;
         min-width: 0;
     }
 
     .comment-topline {
         display: flex;
         justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 10px;
+        gap: 10px;
+        margin-bottom: 6px;
     }
 
     .comment-topline strong {
@@ -825,9 +844,9 @@
         border-top: 1px solid #e7eeee;
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 14px;
-        padding-top: 12px;
+        gap: 6px;
+        margin-top: 8px;
+        padding-top: 8px;
     }
 
     .comment-files a {
@@ -835,8 +854,8 @@
         border: 1px solid #dfe8e8;
         border-radius: 999px;
         color: #1b3a3a;
-        font-size: 0.8rem;
-        padding: 7px 11px;
+        font-size: 0.75rem;
+        padding: 4px 9px;
         text-decoration: none;
     }
 
@@ -868,8 +887,8 @@
     .movement-content {
         background: #f8fbfb;
         border: 1px solid #e7eeee;
-        border-radius: 12px;
-        padding: 14px 16px;
+        border-radius: 8px;
+        padding: 8px 12px;
         min-width: 0;
     }
 
@@ -878,33 +897,40 @@
         align-items: center;
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
     }
 
     .movement-head {
         justify-content: space-between;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
     }
 
     .movement-head strong {
         color: #173434;
-        font-size: 0.92rem;
+        font-size: 0.85rem;
     }
 
     .movement-head span {
-        background: #ffffff;
-        border: 1px solid #dfe8e8;
         border-radius: 999px;
-        color: #526464;
         font-size: 0.72rem;
         font-weight: 800;
         padding: 4px 9px;
     }
 
+    .source-po {
+        background: #b7791f;
+        color: #ffffff;
+    }
+
+    .source-pksf {
+        background: #1b3a3a;
+        color: #ffffff;
+    }
+
     .movement-route {
         color: #344747;
-        font-size: 0.84rem;
-        margin-bottom: 6px;
+        font-size: 0.8rem;
+        margin-bottom: 4px;
     }
 
     .movement-route span {
