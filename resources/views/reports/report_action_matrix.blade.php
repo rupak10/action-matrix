@@ -22,7 +22,7 @@
 
     .report-topbar {
         width: 100%;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
     }
     .report-topbar td.report-heading {
         font-size: 12pt;
@@ -34,14 +34,18 @@
         color: #444;
     }
 
-    /* ── Table ──────────────────────────────────────────────── */
+    .filter-bar {
+        font-size: 8.5pt;
+        color: #444;
+        margin-bottom: 10px;
+    }
+
     .matrix-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 9pt;
         margin-top: 4px;
     }
-    .matrix-table thead th,
     .matrix-table thead td {
         background-color: #000000;
         color: #ffffff;
@@ -77,13 +81,26 @@
     </div>
 </htmlpagefooter>
 
-{{-- ── Top bar: title + print date ─────────────────────────── --}}
+{{-- ── Top bar ───────────────────────────────────────────────── --}}
 <table class="report-topbar">
     <tr>
-        <td class="report-heading">Follow up Action Matrix</td>
+        <td class="report-heading">Action Matrix Report</td>
         <td class="print-date">Print Date: {{ $printedAt }}</td>
     </tr>
 </table>
+
+{{-- ── Active filters ───────────────────────────────────────── --}}
+@if(!empty($filters['po_code']) || !empty($filters['category']))
+<div class="filter-bar">
+    Filters:
+    @if(!empty($filters['po_code']))
+        PO: <strong>{{ $filters['po_code'] }}</strong>
+    @endif
+    @if(!empty($filters['category']))
+        &nbsp;| Category: <strong>{{ $filters['category'] }}</strong>
+    @endif
+</div>
+@endif
 
 {{-- ── Matrix table ─────────────────────────────────────────── --}}
 <table class="matrix-table">
@@ -111,8 +128,8 @@
         </tr>
         @empty
         <tr>
-            <td colspan="8" class="text-center" style="padding: 20px;">
-                No records found.
+            <td colspan="7" class="text-center" style="padding: 20px;">
+                No records found for the selected filters.
             </td>
         </tr>
         @endforelse

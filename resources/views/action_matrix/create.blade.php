@@ -139,7 +139,7 @@
                             <div class="col-md-4 d-flex align-items-end">
                                 <div class="d-flex w-100 gap-2">
                                     <button type="submit" class="btn btn-sm btn-primary flex-grow-1 py-2 shadow-sm">
-                                        <i class="bi bi-save me-1"></i> Save Matrix
+                                        <i class="bi bi-save me-1"></i> Save Observation
                                     </button>
                                 </div>
                             </div>

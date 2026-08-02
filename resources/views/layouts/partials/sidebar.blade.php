@@ -48,10 +48,15 @@
                     'pksf_only' => true,   // Reports menu visible to PKSF users only
                     'children'  => [
                         [
-                            'label'  => 'Report 1',
+                            'label'  => 'Sample Reports',
                             'route'  => 'reports.report1',
                             'active' => request()->routeIs('reports.report1'),
                             'target' => '_blank',
+                        ],
+                        [
+                            'label'  => 'Action Matrix Reports',
+                            'route'  => 'reports.action-matrix-report',
+                            'active' => request()->routeIs('reports.action-matrix-report*'),
                         ],
                     ],
                 ],

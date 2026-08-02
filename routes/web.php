@@ -66,6 +66,8 @@ Route::middleware('auth')->group(function () {
     // Reports — authorization handled inside ReportController
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/report-1', [ReportController::class, 'report1'])->name('report1');
+        Route::get('/action-matrix-report', [ReportController::class, 'actionMatrixFilter'])->name('action-matrix-report');
+        Route::get('/action-matrix-report/generate', [ReportController::class, 'actionMatrixGenerate'])->name('action-matrix-report.generate');
     });
 });
 

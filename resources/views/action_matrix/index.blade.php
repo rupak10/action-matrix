@@ -56,7 +56,7 @@
                  style="background: linear-gradient(135deg, #1b3a3a 0%, #2e5454 100%);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="small opacity-75 mb-1">Total Matrices</div>
+                        <div class="small opacity-75 mb-1">Total Observations</div>
                         <div class="h4 fw-bold mb-0">{{ $stats['total'] }}</div>
                     </div>
                     <i class="bi bi-layers fs-1 opacity-25"></i>
@@ -84,7 +84,7 @@
                  style="background: linear-gradient(135deg, #d4a017 0%, #f0c040 100%);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="small text-dark opacity-75 mb-1">In Progress</div>
+                        <div class="small text-dark opacity-75 mb-1">Ongoing</div>
                         <div class="h4 fw-bold mb-0 text-dark">{{ $stats['in_progress'] }}</div>
                     </div>
                     <i class="bi bi-arrow-repeat fs-1 opacity-25 text-dark"></i>
@@ -98,7 +98,7 @@
                  style="background: linear-gradient(135deg, #1a7a4a 0%, #27ae60 100%);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="small opacity-75 mb-1">Closed</div>
+                        <div class="small opacity-75 mb-1">Completed</div>
                         <div class="h4 fw-bold mb-0">{{ $stats['closed'] }}</div>
                     </div>
                     <i class="bi bi-check-circle fs-1 opacity-25"></i>
@@ -131,8 +131,11 @@
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button class="nav-link fw-semibold px-4" id="tab-all" data-tab="all">
-                            <i class="bi bi-list-ul me-1"></i>All Observations
+                        <button class="nav-link fw-semibold px-4" id="tab-completed" data-tab="completed">
+                            <i class="bi bi-check2-circle me-1"></i>Completed
+                            @if($stats['closed'] > 0)
+                                <span class="badge rounded-pill bg-success ms-1">{{ $stats['closed'] }}</span>
+                            @endif
                         </button>
                     </li>
                 </ul>
@@ -1183,6 +1186,8 @@
                         d.view = 'action_required';
                     } else if (activeTab === 'ongoing') {
                         d.view = 'ongoing';
+                    } else if (activeTab === 'completed') {
+                        d.view = 'completed';
                     } else {
                         d.view = $('#filterView').val();
                     }
@@ -1203,19 +1208,13 @@
             order: [[0, 'desc']],
             drawCallback: function () {
                 const activeTab   = $('#matrixTabs .nav-link.active').data('tab');
-                const isActionTab  = activeTab === 'action_required';
-                const isOngoingTab = activeTab === 'ongoing';
-                const isAllTab     = !isActionTab && !isOngoingTab;
+                const isActionTab    = activeTab === 'action_required';
+                const isOngoingTab   = activeTab === 'ongoing';
+                const isCompletedTab = activeTab === 'completed';
 
-                const anyFilter = isAllTab && (
-                                   $('#filterView').val()     !== 'all'
-                               || ($('#filterPo').length && $('#filterPo').val() !== '')
-                               || $('#filterPriority').val() !== '');
-                $('#btnClearFilters').toggle(anyFilter);
-
-                const isCompleted = isAllTab && $('#filterView').val() === 'completed';
+                $('#btnClearFilters').hide();
                 // Show "Incoming From" only on Action Required tab
-                table.column(6).visible(isActionTab && !isCompleted, false);
+                table.column(6).visible(isActionTab, false);
             }
         });
 
@@ -1238,10 +1237,11 @@
             $(this).addClass('active');
 
             const tab = $(this).data('tab');
-            const isActionTab  = tab === 'action_required';
-            const isOngoingTab = tab === 'ongoing';
-            // Hide View dropdown on Action Required and Ongoing tabs (tab controls the view)
-            $('#filterView').toggle(!isActionTab && !isOngoingTab);
+            const isActionTab    = tab === 'action_required';
+            const isOngoingTab   = tab === 'ongoing';
+            const isCompletedTab = tab === 'completed';
+            // Hide View dropdown — each tab now controls its own view
+            $('#filterView').toggle(!isActionTab && !isOngoingTab && !isCompletedTab);
             // Reset other filters on tab switch
             if ($('#filterPo').length) $('#filterPo').val('');
             $('#filterPriority').val('');

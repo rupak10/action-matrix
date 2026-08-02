@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use Mpdf\Mpdf;
-use Mpdf\Config\ConfigVariables;
-use Mpdf\Config\FontVariables;
 
 class PdfService
 {
@@ -39,50 +37,15 @@ class PdfService
 
         $html = view($view, $data)->render();
 
-        // ── Font configuration ────────────────────────────────────────────
-        $defaultConfig     = (new ConfigVariables())->getDefaults();
-        $defaultFontConfig = (new FontVariables())->getDefaults();
-
-        $fontDirs = $defaultConfig['fontDir'];  // mPDF's own ttfonts/ directory
-        $fontData = $defaultFontConfig['fontdata'];
-
-        $customFontDir  = storage_path('fonts');
-        $defaultFont    = 'freesans';           // bundled, has Bengali glyphs
-
-        // Auto-detect SolaimanLipi and prefer it when available
-        if (
-            is_dir($customFontDir) &&
-            file_exists("{$customFontDir}/SolaimanLipi.ttf")
-        ) {
-            $fontDirs[] = $customFontDir;
-
-            $fontData['solaimanlipi'] = [
-                'R' => 'SolaimanLipi.ttf',
-                'B' => file_exists("{$customFontDir}/SolaimanLipi_Bold.ttf")
-                        ? 'SolaimanLipi_Bold.ttf'
-                        : 'SolaimanLipi.ttf',
-            ];
-
-            $defaultFont = 'solaimanlipi';
-        }
-
         // ── mPDF instance ─────────────────────────────────────────────────
         $mpdf = new Mpdf([
-            'mode'             => 'utf-8',
-            'format'           => $format,
-            'margin_top'       => 20,
-            'margin_bottom'    => 20,
-            'margin_left'      => 20,
-            'margin_right'     => 20,
-            'fontDir'          => $fontDirs,
-            'fontdata'         => $fontData,
-            'default_font'     => $defaultFont,
-            // Disable auto script-to-lang detection: it can override the
-            // default_font and pick a fallback that has no Bengali glyphs,
-            // causing ??? marks. Using FreeSans/FreeSerif (or SolaimanLipi)
-            // directly as the single document font handles Bengali correctly.
-            'autoScriptToLang' => false,
-            'autoLangToFont'   => false,
+            'mode'         => 'utf-8',
+            'format'       => $format,
+            'margin_top'   => 20,
+            'margin_bottom'=> 20,
+            'margin_left'  => 20,
+            'margin_right' => 20,
+            'default_font' => 'nikosh',
         ]);
 
         $mpdf->SetTitle(pathinfo($filename, PATHINFO_FILENAME));
