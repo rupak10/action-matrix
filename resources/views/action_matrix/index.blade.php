@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+@endpush
+
 @section('content')
 @php
     $myPrimarySupervisorRow = auth()->user()->supervisors()->where('is_primary', true)->with('supervisor')->first();
@@ -142,42 +146,89 @@
             </div>
 
             <!-- Filter Bar -->
-            <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
-                <i class="bi bi-funnel text-primary me-1" style="font-size:1.1rem;"></i>
-                <strong style="font-size:.875rem;color:#37474f;margin-right:.25rem;">Filters:</strong>
+            <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-end gap-3">
+                <div class="d-flex align-items-center gap-1 me-1 align-self-center">
+                    <i class="bi bi-funnel text-primary" style="font-size:1.1rem;"></i>
+                    <strong style="font-size:.875rem;color:#37474f;">Filters</strong>
+                </div>
 
-                {{-- Dropdown 1: View (hidden on Action Required tab) --}}
-                <select id="filterView" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:170px; display:none;">
-                    <option value="all">All Matrices</option>
-                    <option value="action_required">Action Required</option>
-                    @if(auth()->user()->isPksf())
-                        <option value="created_by_me">Created by Me</option>
-                    @endif
-                    <option value="completed">Completed</option>
-                </select>
+                {{-- View --}}
+                <div id="filterViewWrap" style="display:none;">
+                    <label class="d-block text-muted mb-1" style="font-size:.72rem;">View</label>
+                    <select id="filterView" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="min-width:160px;">
+                        <option value="all">All Matrices</option>
+                        <option value="action_required">Action Required</option>
+                        @if(auth()->user()->isPksf())
+                            <option value="created_by_me">Created by Me</option>
+                        @endif
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
 
-                {{-- Dropdown 2: PO — PKSF users only (PO users belong to exactly one PO) --}}
+                {{-- PO — PKSF users only --}}
                 @if(auth()->user()->isPksf())
-                <select id="filterPo" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:150px;">
-                    <option value="">All POs</option>
-                    @foreach($formOptions['poList'] as $po)
-                        <option value="{{ $po['code'] }}">{{ $po['name'] }}</option>
-                    @endforeach
-                </select>
+                <div>
+                    <label class="d-block text-muted mb-1" style="font-size:.72rem;">Partner Organization</label>
+                    <select id="filterPo" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="min-width:150px;">
+                        <option value="">All POs</option>
+                        @foreach($formOptions['poList'] as $po)
+                            <option value="{{ $po['code'] }}">{{ $po['name'] }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 @endif
 
-                {{-- Dropdown 3: Priority --}}
-                <select id="filterPriority" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="width:auto; min-width:150px;">
-                    <option value="">All Priorities</option>
-                    @foreach($formOptions['priorities'] as $p)
-                        <option value="{{ $p }}">{{ ucfirst(strtolower($p)) }}</option>
-                    @endforeach
-                </select>
+                {{-- Visit Type --}}
+                <div>
+                    <label class="d-block text-muted mb-1" style="font-size:.72rem;">Visit Type</label>
+                    <select id="filterVisitType" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="min-width:130px;">
+                        <option value="">All Types</option>
+                        @foreach($formOptions['visitTypes'] as $vt)
+                            <option value="{{ $vt }}">{{ ucfirst(strtolower($vt)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Category --}}
+                <div>
+                    <label class="d-block text-muted mb-1" style="font-size:.72rem;">Category</label>
+                    <select id="filterCategory" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="min-width:150px;">
+                        <option value="">All Categories</option>
+                        @foreach($formOptions['categories'] as $cat)
+                            <option value="{{ $cat }}">{{ ucfirst(strtolower($cat)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Priority --}}
+                <div>
+                    <label class="d-block text-muted mb-1" style="font-size:.72rem;">Priority</label>
+                    <select id="filterPriority" class="form-select form-select-sm rounded-pill border-0 shadow-sm" style="min-width:140px;">
+                        <option value="">All Priorities</option>
+                        @foreach($formOptions['priorities'] as $p)
+                            <option value="{{ $p }}">{{ ucfirst(strtolower($p)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Visit From --}}
+                <div>
+                    <label class="d-block text-muted mb-1" style="font-size:.72rem;">Visit From</label>
+                    <input type="text" id="filterVisitFrom" class="form-control form-control-sm rounded-pill border-0 shadow-sm" style="min-width:145px;" placeholder="Select date" readonly>
+                </div>
+
+                {{-- Visit To --}}
+                <div>
+                    <label class="d-block text-muted mb-1" style="font-size:.72rem;">Visit To</label>
+                    <input type="text" id="filterVisitTo" class="form-control form-control-sm rounded-pill border-0 shadow-sm" style="min-width:145px;" placeholder="Select date" readonly>
+                </div>
 
                 {{-- Clear --}}
-                <button id="btnClearFilters" class="btn btn-sm btn-outline-secondary rounded-pill px-3" style="display:none;">
-                    <i class="bi bi-x-circle me-1"></i>Clear
-                </button>
+                <div class="align-self-end">
+                    <button id="btnClearFilters" class="btn btn-sm btn-outline-secondary rounded-pill px-3" style="display:none;">
+                        <i class="bi bi-x-circle me-1"></i>Clear
+                    </button>
+                </div>
             </div>
 
             <div class="table-responsive p-4">
@@ -186,11 +237,12 @@
                         <tr>
                             <th class="border-0">ACM ID</th>
                             <th class="border-0 text-center">PO Code</th>
-                            <th class="border-0">Visit Date</th>
+                            <th class="border-0">Visit Period</th>
+                            <th class="border-0">Visit Type</th>
                             <th class="border-0">Category</th>
                             <th class="border-0">Priority</th>
                             <th class="border-0">Status</th>
-                            <th class="border-0">Incoming From</th>
+                            <th class="border-0 col-incoming">Incoming From</th>
                             <th class="border-0 text-center" data-orderable="false">Actions</th>
                         </tr>
                     </thead>
@@ -999,6 +1051,7 @@
 </style>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
     $(document).ready(function() {
         /* ── Auth context (passed from PHP) ──────────────────────────── */
@@ -1059,7 +1112,7 @@
             const pc       = escAttr(row.po_code);
             const cat      = escAttr(row.observation_category);
             const pri      = escAttr(row.priority);
-            const vd       = escAttr(row.visiting_date);
+            const vd       = escAttr(row.visiting_date + ' – ' + row.visiting_date_to);
             const obs      = escAttr(row._pksf_observation  || '');
             const dir      = escAttr(row._direction_to_po   || '');
             const pksfatts = encodeURIComponent(JSON.stringify(row._pksf_attachments || []));
@@ -1191,14 +1244,21 @@
                     } else {
                         d.view = $('#filterView').val();
                     }
-                    d.po_code  = $('#filterPo').val();
-                    d.priority = $('#filterPriority').val();
+                    d.po_code         = $('#filterPo').val();
+                    d.visit_type      = $('#filterVisitType').val();
+                    d.category        = $('#filterCategory').val();
+                    d.priority        = $('#filterPriority').val();
+                    d.visit_date_from = $('#filterVisitFrom').val();
+                    d.visit_date_to   = $('#filterVisitTo').val();
                 }
             },
             columns: [
                 { data: 'acm_id',               orderable: true  },
                 { data: 'po_code',              orderable: true,  className: 'text-center' },
-                { data: 'visiting_date',        orderable: true  },
+                { data: 'visiting_date', orderable: true, render: function(d, type, row) {
+                    return d + '<br><small class="text-muted">' + row.visiting_date_to + '</small>';
+                }},
+                { data: 'visit_type', orderable: true },
                 { data: 'observation_category', orderable: true  },
                 { data: 'priority',  orderable: true,  render: function(d)          { return renderPriority(d);  } },
                 { data: 'status',    orderable: true,  render: function(d)          { return renderStatus(d);    } },
@@ -1207,26 +1267,64 @@
             ],
             order: [[0, 'desc']],
             drawCallback: function () {
-                const activeTab   = $('#matrixTabs .nav-link.active').data('tab');
+                const activeTab      = $('#matrixTabs .nav-link.active').data('tab');
                 const isActionTab    = activeTab === 'action_required';
                 const isOngoingTab   = activeTab === 'ongoing';
                 const isCompletedTab = activeTab === 'completed';
 
-                $('#btnClearFilters').hide();
+                // Show clear button only when at least one filter has a value
+                const hasFilter = ($('#filterPo').val() || '')         !== ''
+                               || ($('#filterVisitType').val() || '')  !== ''
+                               || ($('#filterCategory').val() || '')   !== ''
+                               || ($('#filterPriority').val() || '')   !== ''
+                               || ($('#filterVisitFrom').val() || '')  !== ''
+                               || ($('#filterVisitTo').val() || '')    !== '';
+                $('#btnClearFilters').toggle(hasFilter);
+
                 // Show "Incoming From" only on Action Required tab
-                table.column(6).visible(isActionTab, false);
+                table.column('.col-incoming:eq(0)').visible(isActionTab, false);
             }
         });
 
+        /* ── Flatpickr for date range filters ────────────────────────── */
+        const fpFrom = flatpickr('#filterVisitFrom', {
+            dateFormat:    'Y-m-d',
+            altInput:      true,
+            altFormat:     'd M, Y',
+            allowInput:    false,
+            disableMobile: true,
+            onChange: function() {
+                $('#btnClearFilters').show();
+                table.ajax.reload();
+            },
+        });
+
+        const fpTo = flatpickr('#filterVisitTo', {
+            dateFormat:    'Y-m-d',
+            altInput:      true,
+            altFormat:     'd M, Y',
+            allowInput:    false,
+            disableMobile: true,
+            onChange: function() {
+                $('#btnClearFilters').show();
+                table.ajax.reload();
+            },
+        });
+
         /* ── Filter dropdown handlers ─────────────────────────────────── */
-        $('#filterView, #filterPo, #filterPriority').on('change', function () {
+        $('#filterView, #filterPo, #filterVisitType, #filterCategory, #filterPriority').on('change', function () {
+            $('#btnClearFilters').show();
             table.ajax.reload();
         });
 
         $('#btnClearFilters').on('click', function () {
             $('#filterView').val('all');
             if ($('#filterPo').length) $('#filterPo').val('');
+            $('#filterVisitType').val('');
+            $('#filterCategory').val('');
             $('#filterPriority').val('');
+            fpFrom.clear();
+            fpTo.clear();
             $(this).hide();
             table.ajax.reload();
         });
@@ -1241,10 +1339,14 @@
             const isOngoingTab   = tab === 'ongoing';
             const isCompletedTab = tab === 'completed';
             // Hide View dropdown — each tab now controls its own view
-            $('#filterView').toggle(!isActionTab && !isOngoingTab && !isCompletedTab);
+            $('#filterViewWrap').toggle(!isActionTab && !isOngoingTab && !isCompletedTab);
             // Reset other filters on tab switch
             if ($('#filterPo').length) $('#filterPo').val('');
+            $('#filterVisitType').val('');
+            $('#filterCategory').val('');
             $('#filterPriority').val('');
+            fpFrom.clear();
+            fpTo.clear();
             $('#btnClearFilters').hide();
 
             table.ajax.reload();

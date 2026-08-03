@@ -40,33 +40,15 @@
                         @method('PUT')
 
                         <div class="row g-3">
+                            <!-- Row 1: PO | Visit Type | Visit From | Visit To -->
                             <div class="col-md-4">
                                 <label class="form-label small fw-bold mb-1">Partner Organization (PO)</label>
                                 <input type="text" class="form-control form-control-sm bg-light" value="{{ $master->po_code }}" readonly>
                                 <div class="form-text small text-muted">PO code is fixed because it is part of the generated ACM ID.</div>
                             </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold mb-1">Visiting Date</label>
-                                <div class="premium-date-field">
-                                    <i class="bi bi-calendar3"></i>
-                                    <input type="text" name="visiting_date" class="form-control form-control-sm js-premium-date" value="{{ old('visiting_date', $master->visiting_date ? \Carbon\Carbon::parse($master->visiting_date)->format('Y-m-d') : '') }}" placeholder="Select visiting date" required>
-                                </div>
-                                @error('visiting_date') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold mb-1">Observation Category</label>
-                                <select name="observation_category" class="form-select form-select-sm" required>
-                                    @foreach($categories as $cat)
-                                        <option value="{{ $cat }}" {{ old('observation_category', $master->observation_category) == $cat ? 'selected' : '' }}>{{ $cat }}</option>
-                                    @endforeach
-                                </select>
-                                @error('observation_category') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold mb-1">Visit Type</label>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-1">Visit Type <span class="text-danger">*</span></label>
                                 <select name="visit_type" class="form-select form-select-sm" required>
                                     @foreach($visitTypes as $type)
                                         <option value="{{ $type }}" {{ old('visit_type', $master->visit_type) == $type ? 'selected' : '' }}>{{ $type }}</option>
@@ -76,7 +58,38 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold mb-1">Visit Category</label>
+                                {{-- visiting_date: used as "Visit From" (ONSITE) or "Addressing Date From" (OFFSITE) --}}
+                                <label id="label_date_from" class="form-label small fw-bold mb-1"><span id="label_date_from_text">Visit From</span> <span class="text-danger">*</span></label>
+                                <div class="premium-date-field">
+                                    <i class="bi bi-calendar3"></i>
+                                    <input type="text" name="visiting_date" class="form-control form-control-sm js-premium-date" value="{{ old('visiting_date', $master->visiting_date ? \Carbon\Carbon::parse($master->visiting_date)->format('Y-m-d') : '') }}" placeholder="From date" required>
+                                </div>
+                                @error('visiting_date') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-3">
+                                {{-- visiting_date_to: used as "Visit To" (ONSITE) or "Addressing Date To" (OFFSITE) --}}
+                                <label id="label_date_to" class="form-label small fw-bold mb-1"><span id="label_date_to_text">Visit To</span> <span class="text-danger">*</span></label>
+                                <div class="premium-date-field">
+                                    <i class="bi bi-calendar3"></i>
+                                    <input type="text" name="visiting_date_to" class="form-control form-control-sm js-premium-date" value="{{ old('visiting_date_to', $master->visiting_date_to ? \Carbon\Carbon::parse($master->visiting_date_to)->format('Y-m-d') : '') }}" placeholder="To date" required>
+                                </div>
+                                @error('visiting_date_to') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            </div>
+
+                            <!-- Row 2: Category | Visit Category | ... (continues below) -->
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-1">Observation Category <span class="text-danger">*</span></label>
+                                <select name="observation_category" class="form-select form-select-sm" required>
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat }}" {{ old('observation_category', $master->observation_category) == $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                                    @endforeach
+                                </select>
+                                @error('observation_category') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-1">Visit Category <span class="text-danger">*</span></label>
                                 <select name="visit_category" class="form-select form-select-sm" required>
                                     @foreach($visitCategories as $vcat)
                                         <option value="{{ $vcat }}" {{ old('visit_category', $master->visit_category) == $vcat ? 'selected' : '' }}>{{ $vcat }}</option>
@@ -104,13 +117,13 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold mb-1">PKSF Observation</label>
+                                <label class="form-label small fw-bold mb-1">PKSF Observation <span class="text-danger">*</span></label>
                                 <textarea name="pksf_observation" class="form-control form-control-sm" rows="5" placeholder="Enter observation..." required>{{ old('pksf_observation', $master->pksf_observation) }}</textarea>
                                 @error('pksf_observation') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold mb-1">Direction to PO</label>
+                                <label class="form-label small fw-bold mb-1">Direction to PO <span class="text-danger">*</span></label>
                                 <textarea name="direction_to_po" class="form-control form-control-sm" rows="5" placeholder="Enter instructions..." required>{{ old('direction_to_po', $master->direction_to_po) }}</textarea>
                                 @error('direction_to_po') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                             </div>
@@ -434,6 +447,20 @@
             allowInput: true,
             disableMobile: true,
         });
+
+        // Update date field labels based on visit type
+        const visitTypeSelect   = document.querySelector('select[name="visit_type"]');
+        const labelDateFromText = document.getElementById('label_date_from_text');
+        const labelDateToText   = document.getElementById('label_date_to_text');
+
+        function updateDateLabels() {
+            const isOffsite = visitTypeSelect.value === 'OFFSITE';
+            labelDateFromText.textContent = isOffsite ? 'Addressing Date From' : 'Visit From';
+            labelDateToText.textContent   = isOffsite ? 'Addressing Date To'   : 'Visit To';
+        }
+
+        visitTypeSelect.addEventListener('change', updateDateLabels);
+        updateDateLabels(); // run on load to reflect the saved visit type
 
         const fileInput = document.getElementById('attachmentInput');
         const fileListContainer = document.getElementById('fileListContainer');

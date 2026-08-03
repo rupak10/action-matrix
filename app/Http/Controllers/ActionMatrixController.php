@@ -65,9 +65,13 @@ class ActionMatrixController extends Controller
         ];
 
         $filters = [
-            'view'     => $request->input('view', 'all'),
-            'po_code'  => $request->input('po_code', ''),
-            'priority' => $request->input('priority', ''),
+            'view'              => $request->input('view', 'all'),
+            'po_code'           => $request->input('po_code', ''),
+            'visit_type'        => $request->input('visit_type', ''),
+            'category'          => $request->input('category', ''),
+            'priority'          => $request->input('priority', ''),
+            'visit_date_from'   => $request->input('visit_date_from', ''),
+            'visit_date_to'     => $request->input('visit_date_to', ''),
         ];
 
         $result = $this->acmService->getMatricesTableData($dtParams, $filters, $user);
@@ -100,16 +104,17 @@ class ActionMatrixController extends Controller
 
         $validated = $request->validate([
             'po_code' => 'required|string|max:5',
-            'visiting_date' => 'required|date',
+            'visiting_date'        => 'required|date',
+            'visiting_date_to'     => 'required|date|after_or_equal:visiting_date',
             'observation_category' => 'required|string',
-            'visit_type' => 'required|string',
-            'visit_category' => 'required|string',
-            'letter_issue_date' => 'nullable|date',
+            'visit_type'           => 'required|string',
+            'visit_category'       => 'required|string',
+            'letter_issue_date'    => 'nullable|date',
             'letter_response_date' => 'nullable|date',
-            'pksf_observation' => 'required|string',
-            'direction_to_po' => 'required|string',
-            'action_matrix' => 'required|in:Y,N',
-            'priority' => 'required|string',
+            'pksf_observation'     => 'required|string',
+            'direction_to_po'      => 'required|string',
+            'action_matrix'        => 'required|in:Y,N',
+            'priority'             => 'required|string',
             'attachments' => 'nullable|array|max:3',
             'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,txt|max:30720',
         ], [
@@ -252,16 +257,17 @@ class ActionMatrixController extends Controller
         abort_unless($this->canEditMatrix($master), 403, 'This Action Matrix cannot be edited at this stage.');
 
         $validated = $request->validate([
-            'visiting_date' => 'required|date',
+            'visiting_date'        => 'required|date',
+            'visiting_date_to'     => 'required|date|after_or_equal:visiting_date',
             'observation_category' => 'required|string',
-            'visit_type' => 'required|string',
-            'visit_category' => 'required|string',
-            'letter_issue_date' => 'nullable|date',
+            'visit_type'           => 'required|string',
+            'visit_category'       => 'required|string',
+            'letter_issue_date'    => 'nullable|date',
             'letter_response_date' => 'nullable|date',
-            'pksf_observation' => 'required|string',
-            'direction_to_po' => 'required|string',
-            'action_matrix' => 'required|in:Y,N',
-            'priority' => 'required|string',
+            'pksf_observation'     => 'required|string',
+            'direction_to_po'      => 'required|string',
+            'action_matrix'        => 'required|in:Y,N',
+            'priority'             => 'required|string',
             'remove_attachments' => 'nullable|array',
             'remove_attachments.*' => 'integer',
             'attachments' => 'nullable|array|max:3',

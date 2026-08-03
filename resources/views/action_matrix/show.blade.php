@@ -61,7 +61,7 @@
                 <div class="detail-subtitle">
                     PO Code <strong>{{ $master->po_code }}</strong>
                     <span class="detail-dot"></span>
-                    Visit Date <strong>{{ $formatDate($master->visiting_date) }}</strong>
+                    Visit Date <strong>{{ $formatDate($master->visiting_date) }} – {{ $formatDate($master->visiting_date_to) }}</strong>
                     <span class="detail-dot"></span>
                     Resolution <strong>{{ $master->resolution_status ?? 'N/A' }}</strong>
                 </div>
@@ -84,7 +84,7 @@
                             <i class="bi bi-clipboard2-data"></i>
                         </span>
                         <div>
-                            <h2 style="color:#fff;">Matrix Summary</h2>
+                            <h2 style="color:#fff;">Observation Summary</h2>
                             <p style="color:rgba(255,255,255,0.7);">Core tracking information for this observation.</p>
                         </div>
                     </div>

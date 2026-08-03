@@ -99,9 +99,27 @@ class ActionMatrixService
             $base->where('po_code', $filters['po_code']);
         }
 
-        // ── Priority filter (Dropdown 3) ──────────────────────────────────
+        // ── Visit Type filter ─────────────────────────────────────────────
+        if (!empty($filters['visit_type'])) {
+            $base->where('visit_type', $filters['visit_type']);
+        }
+
+        // ── Category filter ───────────────────────────────────────────────
+        if (!empty($filters['category'])) {
+            $base->where('observation_category', $filters['category']);
+        }
+
+        // ── Priority filter ───────────────────────────────────────────────
         if (!empty($filters['priority'])) {
             $base->where('priority', $filters['priority']);
+        }
+
+        // ── Visit date range filter ───────────────────────────────────────
+        if (!empty($filters['visit_date_from'])) {
+            $base->where('visiting_date_to', '>=', $filters['visit_date_from']);
+        }
+        if (!empty($filters['visit_date_to'])) {
+            $base->where('visiting_date', '<=', $filters['visit_date_to']);
         }
 
         // ── Total before global search ────────────────────────────────────
@@ -199,6 +217,8 @@ class ActionMatrixService
                 'acm_id'               => $matrix->acm_id,
                 'po_code'              => $matrix->po_code,
                 'visiting_date'        => \Carbon\Carbon::parse($matrix->visiting_date)->format('d M, Y'),
+                'visiting_date_to'     => \Carbon\Carbon::parse($matrix->visiting_date_to)->format('d M, Y'),
+                'visit_type'           => $matrix->visit_type,
                 'observation_category' => $matrix->observation_category,
                 'priority'             => $matrix->priority,
                 'status'               => $matrix->status,
@@ -272,7 +292,8 @@ class ActionMatrixService
             $master = new AcmMaster();
             $master->acm_id = $acmId;
             $master->po_code = $data['po_code'];
-            $master->visiting_date = $data['visiting_date'];
+            $master->visiting_date    = $data['visiting_date'];
+            $master->visiting_date_to = $data['visiting_date_to'];
             
             // Set internally from logged-in user's department
             $master->observation_dept = $user->dept_name ?? 'N/A';
@@ -373,7 +394,8 @@ class ActionMatrixService
             }
 
             $master->update([
-                'visiting_date' => $data['visiting_date'],
+                'visiting_date'    => $data['visiting_date'],
+                'visiting_date_to' => $data['visiting_date_to'],
                 'observation_category' => $data['observation_category'],
                 'visit_type' => $data['visit_type'],
                 'visit_category' => $data['visit_category'],
