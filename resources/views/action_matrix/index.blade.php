@@ -386,6 +386,7 @@
                         <textarea
                             name="comment_detail"
                             id="comment_detail"
+                            form="commentForm"
                             rows="5"
                             class="form-control"
                             placeholder="Write your formal response to the observation above…"
@@ -423,7 +424,7 @@
                             </div>
                         </div>
                         <input type="file" name="attachments[]" id="cmActualFileInput" multiple style="display:none;"
-                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt">
+                               form="commentForm" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt">
                     </div>
 
                     <!-- Routing info -->
@@ -496,45 +497,50 @@
 </div>
 
 <!-- PO Forward Confirmation Modal -->
-<div class="modal fade" id="poForwardModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header border-0 p-4">
-                <h5 class="modal-title fw-bold">Forward to Supervisor?</h5>
+<div class="modal fade" id="poForwardModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-light border-bottom-0 p-4 pb-3">
+                <h5 class="modal-title fw-bold text-dark">Forward Matrix <span class="text-primary" id="poForwardDisplayAcmId"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="poForwardForm" method="POST" action="{{ route('action-matrix.po-forward') }}">
                 @csrf
-                <div class="modal-body p-4 pt-0">
+                <div class="modal-body p-4 pt-3">
                     <input type="hidden" name="acm_id" id="po_forward_acm_id">
-                    <p class="text-muted">Are you sure you want to forward this response to your supervisor for review? You won't be able to edit your comments once forwarded.</p>
-                    
-                    <div class="d-flex align-items-center bg-soft-success p-3 rounded-3 border border-success-subtle mb-4">
-                        <div class="avatar-xs bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" style="width: 32px; height: 32px;">
-                            {{ $mySupervisor ? substr($mySupervisor->name, 0, 1) : '?' }}
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Forwarding To Supervisor</label>
+                        <div class="d-flex align-items-center bg-soft-primary p-3 rounded-3 border border-primary-subtle">
+                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold">
+                                {{ $mySupervisor ? substr($mySupervisor->name, 0, 1) : '?' }}
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-primary">{{ $mySupervisor ? $mySupervisor->name : 'No Supervisor Assigned' }}</h6>
+                                <small class="text-muted">{{ $mySupervisorEmpId ?? 'Please assign a supervisor in your profile' }}</small>
+                            </div>
                         </div>
-                        <div>
-                            <h6 class="mb-0 fw-bold text-dark">{{ $mySupervisor ? $mySupervisor->name : 'No Supervisor Assigned' }}</h6>
-                            <small class="text-muted">PO Supervisor</small>
-                        </div>
+                        @if(!$mySupervisorEmpId)
+                            <div class="alert alert-warning mt-3 border-0 shadow-none smaller">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>Please assign a supervisor in your profile first.
+                            </div>
+                        @endif
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="po_forward_remarks" class="form-label fw-bold small text-uppercase text-muted">Final Remarks (Optional)</label>
-                        <textarea name="remarks" id="po_forward_remarks" class="form-control" rows="3" placeholder="Any final notes for your supervisor..."></textarea>
+                        <label for="po_forward_remarks" class="form-label fw-bold">Remarks / Notes</label>
+                        <textarea name="remarks" id="po_forward_remarks" class="form-control" rows="3" placeholder="Add any comments for your supervisor..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 p-4 pt-0 d-flex gap-2">
+                <div class="modal-footer border-top-0 bg-light p-3">
                     <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm">
-                        <i class="bi bi-send-fill me-2"></i>Forward Now
+                    <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm" {{ !$mySupervisorEmpId ? 'disabled' : '' }}>
+                        <i class="bi bi-send me-2"></i>Send to Supervisor
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-<div class="modal fade" id="poReviewModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="poReviewModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered" style="max-width:620px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-warning text-dark p-4">
@@ -568,8 +574,8 @@
         </div>
     </div>
 </div>
-<div class="modal fade" id="forwardModal" tabindex="-1" aria-labelledby="forwardModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="forwardModal" tabindex="-1" aria-labelledby="forwardModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-light border-bottom-0 p-4 pb-3">
                 <h5 class="modal-title fw-bold text-dark" id="forwardModalLabel">Forward Matrix <span class="text-primary" id="displayAcmId"></span></h5>
@@ -613,8 +619,8 @@
 </div>
 
 <!-- PO Supervisor → Forward to PO Officer Modal -->
-<div class="modal fade" id="poForwardToOfficerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="poForwardToOfficerModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-primary text-white p-4">
                 <h5 class="modal-title fw-bold">Forward to PO Concern Officer</h5>
@@ -715,7 +721,7 @@
 </div>
 
 <!-- PKSF Request Revision Modal -->
-<div class="modal fade" id="pksfRequestRevisionModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="pksfRequestRevisionModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-warning text-dark p-4">
@@ -748,7 +754,7 @@
                             </div>
                             <div>
                                 <h6 class="mb-0 fw-bold text-dark">{{ $mySupervisor ? $mySupervisor->name : 'No Supervisor Assigned' }}</h6>
-                                <small class="text-muted">PKSF Supervisor (Automatic Forward)</small>
+                                <small class="text-muted">PKSF Supervisor</small>
                             </div>
                         </div>
                     </div>
@@ -772,18 +778,23 @@
                             <div id="pksfRevExistingFiles" class="mb-3"></div>
                         </div>
 
-                        <!-- New file inputs -->
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small text-muted" style="font-size:.75rem;">Add new files (Max 3 total)</span>
-                        </div>
-                        <div class="row g-2" id="pksfRevisionAttachmentContainer">
-                            <div class="col-12">
-                                <input type="file" name="attachments[]" class="form-control mb-2">
+                        <!-- New file upload zone -->
+                        <div id="revUploadZone" class="border rounded-3 px-3 py-3 text-center"
+                             style="cursor:pointer;background:#fafafa;transition:background 0.15s,border-color 0.15s;">
+                            <div id="revUploadPrompt" class="d-flex align-items-center justify-content-center gap-2">
+                                <i class="bi bi-paperclip text-muted" style="font-size:1rem;"></i>
+                                <span class="small text-muted">Click to attach files</span>
+                                <span class="text-muted" style="font-size:0.72rem;">· PDF · Word · Excel · Images · max 30 MB</span>
+                            </div>
+                            <div id="revFileList" style="display:none;text-align:left;"></div>
+                            <div id="revAddMoreWrap" class="mt-2" style="display:none;">
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="revAddMoreBtn">
+                                    <i class="bi bi-plus me-1"></i>Add another file
+                                </button>
                             </div>
                         </div>
-                        <button type="button" id="btnPksfAddMoreRevisionFile" class="btn btn-sm btn-outline-secondary rounded-pill mt-1" style="display:none;">
-                            <i class="bi bi-plus-circle me-1"></i>Add Another File
-                        </button>
+                        <input type="file" name="attachments[]" id="revActualFileInput" multiple style="display:none;"
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt">
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-0 p-3 d-flex justify-content-between">
@@ -836,7 +847,7 @@
 </div>
 
 <!-- PKSF Review Revision Modal (Supervisor) -->
-<div class="modal fade" id="pksfReviewRevisionModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="pksfReviewRevisionModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered" style="max-width:620px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-warning text-dark p-4">
@@ -1719,7 +1730,8 @@
             const acmId = $(this).attr('data-acmid');
             $('#po_forward_acm_id').val(acmId);
             $('#po_forward_remarks').val('');
-            
+            $('#poForwardDisplayAcmId').text(acmId);
+
             const modal = new bootstrap.Modal(document.getElementById('poForwardModal'));
             modal.show();
         });
@@ -1792,18 +1804,97 @@
 
         // PKSF Concern Officer Request Revision Modal
         let pksfRevRemovedIds = []; // tracks existing file_ids the user wants to delete
-        let pksfFileCount     = 1;  // number of new-file input rows currently in the form
+        let revDt = new DataTransfer();
 
-        // Show "Add Another File" only when ≥1 file is present AND cap not reached
-        function pksfRevSyncAddMoreBtn() {
-            const existingPills = $('#pksfRevExistingFiles .pksf-rev-existing-pill').length;
-            let filledInputs = 0;
-            $('#pksfRevisionAttachmentContainer input[type="file"]').each(function() {
-                if (this.files && this.files.length > 0) filledInputs++;
-            });
-            const hasFile = (existingPills + filledInputs) >= 1;
-            $('#btnPksfAddMoreRevisionFile').toggle(hasFile && pksfFileCount < 3);
+        function revFormatBytes(b) {
+            if (!b || b < 1024) return (b || 0) + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
         }
+        function revEsc(t) { return $('<span>').text(t).html(); }
+
+        function revTotalCount() {
+            return $('#pksfRevExistingFiles .pksf-rev-existing-pill').length + revDt.files.length;
+        }
+
+        function revRenderPills() {
+            const $list = $('#revFileList');
+            $list.empty();
+            for (let i = 0; i < revDt.files.length; i++) {
+                const f = revDt.files[i];
+                $list.append(`
+                    <div class="po-cm-file-pill">
+                        <span class="po-cm-file-pill-icon"><i class="bi bi-file-earmark-text"></i></span>
+                        <span class="po-cm-file-pill-name" title="${revEsc(f.name)}">${revEsc(f.name)}</span>
+                        <span class="po-cm-file-pill-size">${revFormatBytes(f.size)}</span>
+                        <button type="button" class="po-cm-file-pill-remove rev-new-remove" data-idx="${i}" title="Remove">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>`);
+            }
+            $list.toggle(revDt.files.length > 0);
+        }
+
+        function revSyncInput() {
+            document.getElementById('revActualFileInput').files = revDt.files;
+        }
+
+        function revUpdateZone() {
+            const n = revTotalCount();
+            if (n === 0) {
+                $('#revUploadZone').removeClass('rev-zone-full');
+                $('#revUploadPrompt').show();
+                $('#revAddMoreWrap').hide();
+            } else if (n < 3) {
+                $('#revUploadZone').removeClass('rev-zone-full');
+                $('#revUploadPrompt').hide();
+                $('#revAddMoreWrap').show();
+            } else {
+                $('#revUploadZone').addClass('rev-zone-full');
+                $('#revUploadPrompt').hide();
+                $('#revAddMoreWrap').hide();
+            }
+        }
+
+        function revPickFile() {
+            if (revTotalCount() >= 3) return;
+            const tmp = document.createElement('input');
+            tmp.type = 'file';
+            tmp.accept = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt';
+            tmp.onchange = function () {
+                const file = this.files[0];
+                if (!file) return;
+                if (revTotalCount() >= 3) { alert('Maximum 3 files allowed.'); return; }
+                revDt.items.add(file);
+                revSyncInput();
+                revRenderPills();
+                revUpdateZone();
+            };
+            tmp.click();
+        }
+
+        $('#revUploadZone').on('click', function (e) {
+            if ($(e.target).closest('#revAddMoreWrap').length) return;
+            revPickFile();
+        });
+
+        $('#revAddMoreBtn').on('click', function (e) {
+            e.stopPropagation();
+            revPickFile();
+        });
+
+        $(document).on('click', '.rev-new-remove', function (e) {
+            e.stopPropagation();
+            const idx = parseInt($(this).data('idx'));
+            const dt2 = new DataTransfer();
+            for (let i = 0; i < revDt.files.length; i++) {
+                if (i !== idx) dt2.items.add(revDt.files[i]);
+            }
+            revDt = dt2;
+            revSyncInput();
+            revRenderPills();
+            revUpdateZone();
+        });
 
         $('#matrixTable').on('click', '.btn-pksf-request-revision', function() {
             const acmId  = $(this).attr('data-acmid');
@@ -1819,10 +1910,11 @@
             $('#pksfRevExistingFiles').empty();
             $('#pksfRevExistingFilesSection').hide();
 
-            // Reset new file inputs
-            $('#pksfRevisionAttachmentContainer').html('<div class="col-12"><input type="file" name="attachments[]" class="form-control mb-2"></div>');
-            pksfFileCount = 1;
-            pksfRevSyncAddMoreBtn(); // evaluates to hidden (no files present yet)
+            // Reset upload zone
+            revDt = new DataTransfer();
+            revSyncInput();
+            revRenderPills();
+            revUpdateZone();
 
             // Hide supervisor context until populated
             $('#pksfRevSupContext').hide();
@@ -1878,7 +1970,7 @@
                             });
                             $('#pksfRevExistingFiles').html(html);
                             $('#pksfRevExistingFilesSection').show();
-                            pksfRevSyncAddMoreBtn(); // files present → show the add-more button
+                            revUpdateZone();
                         }
                     })
                     .fail(function () {
@@ -1899,7 +1991,7 @@
                 if ($('#pksfRevExistingFiles .pksf-rev-existing-pill').length === 0) {
                     $('#pksfRevExistingFilesSection').hide();
                 }
-                pksfRevSyncAddMoreBtn(); // re-evaluate after pill removed
+                revUpdateZone();
             });
         });
 
@@ -1916,18 +2008,6 @@
             });
         });
 
-        // Re-evaluate whenever a file is chosen or cleared in any new-file input
-        $(document).on('change', '#pksfRevisionAttachmentContainer input[type="file"]', function() {
-            pksfRevSyncAddMoreBtn();
-        });
-
-        $(document).on('click', '#btnPksfAddMoreRevisionFile', function() {
-            if (pksfFileCount < 3) {
-                $('#pksfRevisionAttachmentContainer').append('<div class="col-12"><input type="file" name="attachments[]" class="form-control mb-2"></div>');
-                pksfFileCount++;
-                pksfRevSyncAddMoreBtn();
-            }
-        });
 
         // PKSF Supervisor Review Closure Modal
         $('#matrixTable').on('click', '.btn-pksf-review-closure', function() {

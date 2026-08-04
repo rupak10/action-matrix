@@ -42,13 +42,11 @@ class ActionMatrixService
             $inner->where('created_by', $user->emp_id)
                   ->orWhere('current_desk_emp_id', $user->emp_id);
 
-            // Any PO user: all matrices for their PO that are in PO workflow or closed
+            // Any PO user: all matrices for their PO past the SAVED stage
             if ($user->isPo() && $user->po_code) {
                 $inner->orWhere(function ($q2) use ($user) {
                     $q2->where('po_code', $user->po_code)
-                       ->where(function ($q3) {
-                           $q3->where('po_inbox', 'Y')->orWhere('status', 'CLOSED');
-                       });
+                       ->where('status', '!=', 'SAVED');
                 });
             }
 
@@ -57,8 +55,11 @@ class ActionMatrixService
                 ->where('supervisor_emp_id', $user->emp_id)->exists();
 
             if ($isSupervisor && $user->isPksf()) {
-                // PKSF Supervisor sees all closed and reopened matrices
-                $inner->orWhereIn('status', ['CLOSED', 'REOPENED']);
+                $assignedPos = $user->assignedPoCodes();
+                $inner->orWhere(function ($q2) use ($assignedPos) {
+                    $q2->whereIn('po_code', $assignedPos)
+                       ->where('status', '!=', 'SAVED');
+                });
             }
         });
 
@@ -76,7 +77,7 @@ class ActionMatrixService
         return [
             'total'          => (clone $base)->count(),
             'action_required'=> (clone $base)->where('current_desk_emp_id', $user->emp_id)->count(),
-            'in_progress'    => (clone $base)->whereNotIn('status', ['SAVED', 'CLOSED'])->count(),
+            'in_progress'    => (clone $base)->whereNotIn('status', ['SAVED', 'CLOSED', 'REOPENED'])->where('current_desk_emp_id', '!=', $user->emp_id)->count(),
             'closed'         => (clone $base)->where('status', 'CLOSED')->count(),
         ];
     }
@@ -102,7 +103,8 @@ class ActionMatrixService
                 $base->where('created_by', $user->emp_id);
                 break;
             case 'ongoing':
-                $base->whereNotIn('status', ['SAVED', 'CLOSED', 'REOPENED']);
+                $base->whereNotIn('status', ['SAVED', 'CLOSED', 'REOPENED'])
+                     ->where('current_desk_emp_id', '!=', $user->emp_id);
                 break;
             case 'completed':
                 $base->whereIn('status', ['CLOSED', 'REOPENED']);
@@ -1122,36 +1124,30 @@ class ActionMatrixService
                     'updated_at' => now(),
                 ]);
 
-            // Find PO Concern Officer
-            $poOfficer = \App\Models\User::whereHas('roles', function($q) {
-                $q->where('name', 'PO_CO');
+            // Find PO Supervisor — revision routes back through normal PO flow
+            $poSupervisor = \App\Models\User::whereHas('roles', function($q) {
+                $q->where('name', 'PO_SUPERVISOR');
             })->where('po_code', $master->po_code)->first();
 
-            if (!$poOfficer) {
-                $poOfficer = \App\Models\User::where('po_code', $master->po_code)
-                    ->where('emp_type', 'PO')
-                    ->first();
-            }
-
-            if (!$poOfficer) {
-                throw new \Exception('No PO Concern Officer found for PO Code ' . $master->po_code);
+            if (!$poSupervisor) {
+                throw new \Exception('No PO Supervisor found for PO Code ' . $master->po_code);
             }
 
             $master->update([
-                'status' => 'PO_REVIEW',
-                'current_desk_emp_id' => $poOfficer->emp_id,
-                'po_inbox' => 'Y',
-                'is_editable_by_po' => 'Y',
-                'updated_at' => now(),
-                'updated_by' => $user->emp_id
+                'status'              => 'PO_SO_REVIEW',
+                'current_desk_emp_id' => $poSupervisor->emp_id,
+                'po_inbox'            => 'Y',
+                'is_editable_by_po'   => 'N',
+                'updated_at'          => now(),
+                'updated_by'          => $user->emp_id,
             ]);
 
             $nextSl = DB::table('acm_pksf_movements')->where('acm_id', $acmId)->max('sl') + 1;
             DB::table('acm_pksf_movements')->insert([
-                'acm_id' => $acmId,
-                'sl' => $nextSl,
+                'acm_id'      => $acmId,
+                'sl'          => $nextSl,
                 'from_emp_id' => $user->emp_id,
-                'to_emp_id' => $poOfficer->emp_id,
+                'to_emp_id'   => $poSupervisor->emp_id,
                 'action_type' => 'REVISION_APPROVED_AND_SENT_TO_PO',
                 'remarks' => $remarks ?? '',
                 'created_by' => $user->emp_id,
