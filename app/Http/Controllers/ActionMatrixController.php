@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PoInfo;
 use App\Services\ActionMatrixService;
 use Illuminate\Http\Request;
 
@@ -37,6 +38,19 @@ class ActionMatrixController extends Controller
 
         // Filter options for the dropdowns
         $formOptions = $this->getFormOptions();
+
+        // Scope PO dropdown to assigned POs for: SM DMD/SGM and all other PKSF users (e.g. PKSF_CO)
+        // Admin and SM_MD retain the full list
+        $needsPoScope = ($user->isSeniorManagement() && !$user->isSmMd())
+            || ($user->isPksf() && !$user->isSeniorManagement() && !$user->hasAnyRole(['Admin', 'Super_Admin']));
+
+        if ($needsPoScope) {
+            $assignedCodes = $user->assignedPoCodes();
+            $formOptions['poList'] = array_values(array_filter(
+                $formOptions['poList'],
+                fn($po) => in_array($po['code'], $assignedCodes)
+            ));
+        }
 
         // Empty collections — table data now comes via AJAX (getData)
         $matrices            = collect();
@@ -89,6 +103,16 @@ class ActionMatrixController extends Controller
         }
 
         $formOptions = $this->getFormOptions();
+        $user = auth()->user();
+
+        // Scope PO list to assigned POs for PKSF_CO (non-SM, non-admin PKSF users)
+        if ($user->isPksf() && !$user->isSeniorManagement() && !$user->hasAnyRole(['Admin', 'Super_Admin'])) {
+            $assignedCodes = $user->assignedPoCodes();
+            $formOptions['poList'] = array_values(array_filter(
+                $formOptions['poList'],
+                fn($po) => in_array($po['code'], $assignedCodes)
+            ));
+        }
 
         return view('action_matrix.create', $formOptions);
     }
@@ -156,14 +180,22 @@ class ActionMatrixController extends Controller
         $isSupervisor = \Illuminate\Support\Facades\DB::table('user_supervisors')
             ->where('supervisor_emp_id', $user->emp_id)->exists();
 
+        // Senior Management: access observations past the internal PKSF drafting stage
+        $isSmWithAccess = $user->isSeniorManagement()
+            && !in_array($master->status, ['SAVED', 'SUBMITTED', 'REJECTED'])
+            && ($user->isSmMd() || in_array($master->po_code, $user->assignedPoCodes()));
+
+        $isPksfSupervisor = $isSupervisor && $user->isPksf();
+
         $canView = $isAdmin
+            || $isSmWithAccess
             || $master->created_by === $user->emp_id
             || $master->current_desk_emp_id === $user->emp_id
             // Any PO user: all matrices for their PO that are in PO workflow or closed
             || ($user->isPo() && $user->po_code && $master->po_code === $user->po_code
-                && ($master->po_inbox === 'Y' || $master->status === 'CLOSED'))
-            // PKSF Supervisor: all closed matrices
-            || ($isSupervisor && $user->isPksf() && $master->status === 'CLOSED');
+                && ($master->po_inbox === 'Y' || in_array($master->status, ['CLOSED', 'REOPENED'])))
+            // PKSF Supervisor: all closed and reopened matrices
+            || ($isPksfSupervisor && in_array($master->status, ['CLOSED', 'REOPENED']));
 
         abort_unless($canView, 403, 'Unauthorized access to this Action Matrix.');
 
@@ -218,13 +250,21 @@ class ActionMatrixController extends Controller
             ? $movements->where('source', 'PO')->values()
             : $movements;
 
+        $smComments = \App\Models\AcmSmComment::with('commenter')
+            ->where('acm_id', $master->acm_id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
         return view('action_matrix.show', compact(
             'master',
             'commentAttachments',
             'movements',
             'movementHistory',
             'usersByEmpId',
-            'incomingAssignment'
+            'incomingAssignment',
+            'smComments',
+            'isSmWithAccess',
+            'isPksfSupervisor'
         ));
     }
 
@@ -647,6 +687,46 @@ class ActionMatrixController extends Controller
     }
 
     /**
+     * PKSF Supervisor reopens a CLOSED observation.
+     */
+    public function reopen(Request $request)
+    {
+        $request->validate([
+            'acm_id'         => 'required|string',
+            'remarks'        => 'required|string|max:2000',
+            'comment_detail' => 'required|string|max:5000',
+            'attachments'    => 'nullable|array|max:3',
+            'attachments.*'  => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,txt|max:30720',
+        ]);
+
+        $user = auth()->user();
+        $isSupervisor = \Illuminate\Support\Facades\DB::table('user_supervisors')
+            ->where('supervisor_emp_id', $user->emp_id)->exists();
+
+        abort_unless($isSupervisor && $user->isPksf(), 403, 'Only PKSF Supervisors can reopen observations.');
+
+        $master = \App\Models\AcmMaster::where('acm_id', $request->acm_id)->firstOrFail();
+        abort_unless($master->status === 'CLOSED', 422, 'Only CLOSED observations can be reopened.');
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $user) {
+                $this->acmService->storeComment([
+                    'acm_id'         => $request->acm_id,
+                    'comment_detail' => $request->comment_detail,
+                    'attachments'    => $request->file('attachments') ?? [],
+                ], $user);
+
+                $this->acmService->reopenMatrix($request->acm_id, $request->remarks, $user);
+            });
+
+            return redirect()->route('action-matrix.show', $request->acm_id)
+                ->with('success', 'Observation ' . $request->acm_id . ' has been reopened and sent to PO Supervisor.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
      * GET — fetch the last PKSF CO comment + supervisor's rejection remark
      * for the Update Comment modal (PKSF_REJECTED stage only).
      */
@@ -717,16 +797,19 @@ class ActionMatrixController extends Controller
 
     protected function getFormOptions(): array
     {
+        $poList = PoInfo::where('is_active', 'Y')
+            ->orderBy('po_code')
+            ->get()
+            ->map(fn($po) => ['code' => $po->po_code, 'name' => $po->po_name])
+            ->values()
+            ->toArray();
+
         return [
-            'poList' => [
-                ['code' => '001', 'name' => 'PO One'],
-                ['code' => '007', 'name' => 'PO Seven'],
-                ['code' => '010', 'name' => 'PO Ten'],
-            ],
-            'categories' => ['FINANCIAL', 'OPERATIONAL', 'COMPLIANCE', 'GOVERNANCE'],
-            'visitTypes' => ['ONSITE', 'OFFSITE'],
+            'poList'          => $poList,
+            'categories'      => ['FINANCIAL', 'OPERATIONAL', 'COMPLIANCE', 'GOVERNANCE'],
+            'visitTypes'      => ['ONSITE', 'OFFSITE'],
             'visitCategories' => ['REGULAR VISIT', 'MANAGEMENT AUDIT', 'SPECIAL AUDIT', 'PKSF INTERNAL AUDIT', 'PKSF EXTERNAL AUDIT'],
-            'priorities' => ['LOW', 'MEDIUM', 'HIGH'],
+            'priorities'      => ['LOW', 'MEDIUM', 'HIGH'],
         ];
     }
 

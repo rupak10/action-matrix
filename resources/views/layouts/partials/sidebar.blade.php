@@ -86,6 +86,16 @@
                             'active' => request()->routeIs('user-roles.*'),
                         ],
                         [
+                            'label'  => 'PO Assignments',
+                            'route'  => 'admin.po-assignments.index',
+                            'active' => request()->routeIs('admin.po-assignments.*'),
+                        ],
+                        [
+                            'label'  => 'PO Information',
+                            'route'  => 'admin.po-info.index',
+                            'active' => request()->routeIs('admin.po-info.*'),
+                        ],
+                        [
                             'label' => 'Profile Settings',
                             'route' => 'profile.edit',
                             'active' => request()->routeIs('profile.*'),

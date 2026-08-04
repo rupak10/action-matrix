@@ -21,31 +21,46 @@ class ActionMatrixService
     {
         $q = DB::table('acm_master');
 
-        if (!$this->isAdmin($user)) {
-            $q->where(function ($inner) use ($user) {
-                $inner->where('created_by', $user->emp_id)
-                      ->orWhere('current_desk_emp_id', $user->emp_id);
-
-                // Any PO user: all matrices for their PO that are in PO workflow or closed
-                if ($user->isPo() && $user->po_code) {
-                    $inner->orWhere(function ($q2) use ($user) {
-                        $q2->where('po_code', $user->po_code)
-                           ->where(function ($q3) {
-                               $q3->where('po_inbox', 'Y')->orWhere('status', 'CLOSED');
-                           });
-                    });
-                }
-
-                // Supervisors: detected by checking if any subordinate points to this user
-                $isSupervisor = DB::table('user_supervisors')
-                    ->where('supervisor_emp_id', $user->emp_id)->exists();
-
-                if ($isSupervisor && $user->isPksf()) {
-                    // PKSF Supervisor sees all closed matrices
-                    $inner->orWhere('status', 'CLOSED');
-                }
-            });
+        if ($this->isAdmin($user)) {
+            return $q;
         }
+
+        // Senior Management: see observations once past internal PKSF drafting stage
+        if ($user->isSeniorManagement()) {
+            $q->whereNotIn('status', ['SAVED', 'SUBMITTED', 'REJECTED']);
+
+            if (!$user->isSmMd()) {
+                // DMD/SGM: scoped to assigned POs only
+                $assignedPos = $user->assignedPoCodes();
+                $q->whereIn('po_code', $assignedPos);
+            }
+
+            return $q;
+        }
+
+        $q->where(function ($inner) use ($user) {
+            $inner->where('created_by', $user->emp_id)
+                  ->orWhere('current_desk_emp_id', $user->emp_id);
+
+            // Any PO user: all matrices for their PO that are in PO workflow or closed
+            if ($user->isPo() && $user->po_code) {
+                $inner->orWhere(function ($q2) use ($user) {
+                    $q2->where('po_code', $user->po_code)
+                       ->where(function ($q3) {
+                           $q3->where('po_inbox', 'Y')->orWhere('status', 'CLOSED');
+                       });
+                });
+            }
+
+            // Supervisors: detected by checking if any subordinate points to this user
+            $isSupervisor = DB::table('user_supervisors')
+                ->where('supervisor_emp_id', $user->emp_id)->exists();
+
+            if ($isSupervisor && $user->isPksf()) {
+                // PKSF Supervisor sees all closed and reopened matrices
+                $inner->orWhereIn('status', ['CLOSED', 'REOPENED']);
+            }
+        });
 
         return $q;
     }
@@ -87,10 +102,10 @@ class ActionMatrixService
                 $base->where('created_by', $user->emp_id);
                 break;
             case 'ongoing':
-                $base->whereNotIn('status', ['SAVED', 'CLOSED']);
+                $base->whereNotIn('status', ['SAVED', 'CLOSED', 'REOPENED']);
                 break;
             case 'completed':
-                $base->where('status', 'CLOSED');
+                $base->whereIn('status', ['CLOSED', 'REOPENED']);
                 break;
         }
 
@@ -976,6 +991,47 @@ class ActionMatrixService
                 'to_emp_id' => $supervisorId,
                 'action_type' => 'REVISION_REQUESTED',
                 'remarks' => $data['comment_detail'] ?? '',
+                'created_by' => $user->emp_id,
+                'created_at' => now(),
+            ]);
+        });
+    }
+
+    /**
+     * PKSF Supervisor reopens a CLOSED observation and routes it back to PO Supervisor.
+     */
+    public function reopenMatrix(string $acmId, string $remarks, \App\Models\User $user): void
+    {
+        $acmId = trim($acmId);
+        DB::transaction(function () use ($acmId, $remarks, $user) {
+            $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
+
+            $poSupervisor = \App\Models\User::whereHas('roles', function ($q) {
+                $q->where('name', 'PO_SUPERVISOR');
+            })->where('po_code', $master->po_code)->first();
+
+            if (!$poSupervisor) {
+                throw new \Exception('No PO Supervisor found for PO Code ' . $master->po_code . '. Cannot reopen.');
+            }
+
+            $master->update([
+                'status'              => 'REOPENED',
+                'resolution_status'   => 'NOT_RESOLVED',
+                'current_desk_emp_id' => $poSupervisor->emp_id,
+                'po_inbox'            => 'Y',
+                'is_editable_by_po'   => 'N',
+                'updated_at'          => now(),
+                'updated_by'          => $user->emp_id,
+            ]);
+
+            $nextSl = DB::table('acm_pksf_movements')->where('acm_id', $acmId)->max('sl') + 1;
+            DB::table('acm_pksf_movements')->insert([
+                'acm_id'     => $acmId,
+                'sl'         => $nextSl,
+                'from_emp_id'=> $user->emp_id,
+                'to_emp_id'  => $poSupervisor->emp_id,
+                'action_type'=> 'REOPENED',
+                'remarks'    => $remarks,
                 'created_by' => $user->emp_id,
                 'created_at' => now(),
             ]);

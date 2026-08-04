@@ -21,6 +21,7 @@ class AnalyticsService
         'REVISION_REQUESTED'  => 'Revision Req.',
         'PKSF_REJECTED'       => 'PKSF Returned',
         'CLOSED'              => 'Closed',
+        'REOPENED'            => 'Reopened',
     ];
 
     // ── Role helper ───────────────────────────────────────────────────────

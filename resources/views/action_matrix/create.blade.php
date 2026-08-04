@@ -97,7 +97,7 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold mb-1">Letter Response Date</label>
+                                <label class="form-label small fw-bold mb-1">Letter Response Date (Expected)</label>
                                 <div class="premium-date-field">
                                     <i class="bi bi-calendar3"></i>
                                     <input type="text" name="letter_response_date" class="form-control form-control-sm js-premium-date" value="{{ old('letter_response_date') }}" placeholder="Select response date">

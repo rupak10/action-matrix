@@ -118,6 +118,7 @@
             <!-- Tabs -->
             <div class="px-4 pt-3 border-bottom bg-white">
                 <ul class="nav nav-tabs border-0" id="matrixTabs">
+                    @unless(auth()->user()->isSeniorManagement())
                     <li class="nav-item">
                         <button class="nav-link active fw-semibold px-4" id="tab-action" data-tab="action_required">
                             <i class="bi bi-exclamation-circle me-1"></i>Action Required
@@ -126,8 +127,9 @@
                             @endif
                         </button>
                     </li>
+                    @endunless
                     <li class="nav-item">
-                        <button class="nav-link fw-semibold px-4" id="tab-ongoing" data-tab="ongoing">
+                        <button class="nav-link {{ auth()->user()->isSeniorManagement() ? 'active' : '' }} fw-semibold px-4" id="tab-ongoing" data-tab="ongoing">
                             <i class="bi bi-arrow-repeat me-1"></i>Ongoing
                             @if($stats['in_progress'] > 0)
                                 <span class="badge rounded-pill bg-warning text-dark ms-1">{{ $stats['in_progress'] }}</span>
@@ -1056,10 +1058,11 @@
     $(document).ready(function() {
         /* ── Auth context (passed from PHP) ──────────────────────────── */
         const AUTH = {
-            empId:          '{{ auth()->user()->emp_id }}',
-            isPksf:         {{ auth()->user()->isPksf() ? 'true' : 'false' }},
-            isPo:           {{ auth()->user()->isPo()   ? 'true' : 'false' }},
-            isPoSupervisor: {{ auth()->user()->hasAnyRole(['PO_SUPERVISOR']) ? 'true' : 'false' }},
+            empId:              '{{ auth()->user()->emp_id }}',
+            isPksf:             {{ auth()->user()->isPksf() ? 'true' : 'false' }},
+            isPo:               {{ auth()->user()->isPo()   ? 'true' : 'false' }},
+            isPoSupervisor:     {{ auth()->user()->hasAnyRole(['PO_SUPERVISOR']) ? 'true' : 'false' }},
+            isSeniorManagement: {{ auth()->user()->isSeniorManagement() ? 'true' : 'false' }},
         };
 
         /* ── String-escape helpers ────────────────────────────────────── */
@@ -1098,6 +1101,7 @@
                 REVISION_REQUESTED:  ['warning text-dark', 'Revision Requested'],
                 PKSF_REJECTED:       ['danger',            'Returned by PKSF'],
                 CLOSED:              ['success',           'Closed'],
+                REOPENED:            ['warning text-dark', 'Reopened'],
             };
             const [cls, label] = map[status] || ['secondary', status];
             return `<span class="badge bg-${cls} rounded-pill px-3">${escHtml(label)}</span>`;
@@ -1116,6 +1120,12 @@
             const obs      = escAttr(row._pksf_observation  || '');
             const dir      = escAttr(row._direction_to_po   || '');
             const pksfatts = encodeURIComponent(JSON.stringify(row._pksf_attachments || []));
+
+            // Senior Management: view only, no workflow actions
+            if (AUTH.isSeniorManagement) {
+                return `<a href="/action-matrix/${id}" class="btn btn-sm btn-outline-secondary rounded-pill" title="View">
+                            <i class="bi bi-eye me-1"></i>View</a>`;
+            }
 
             let btns = '';
 
