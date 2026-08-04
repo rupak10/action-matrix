@@ -191,11 +191,12 @@ class ActionMatrixController extends Controller
             || $isSmWithAccess
             || $master->created_by === $user->emp_id
             || $master->current_desk_emp_id === $user->emp_id
-            // Any PO user: all matrices for their PO that are in PO workflow or closed
+            // Any PO user: all matrices for their PO past the SAVED stage
             || ($user->isPo() && $user->po_code && $master->po_code === $user->po_code
-                && ($master->po_inbox === 'Y' || in_array($master->status, ['CLOSED', 'REOPENED'])))
-            // PKSF Supervisor: all closed and reopened matrices
-            || ($isPksfSupervisor && in_array($master->status, ['CLOSED', 'REOPENED']));
+                && $master->status !== 'SAVED')
+            // PKSF Supervisor: all observations for assigned POs past the SAVED stage
+            || ($isPksfSupervisor && $master->status !== 'SAVED'
+                && in_array($master->po_code, $user->assignedPoCodes()));
 
         abort_unless($canView, 403, 'Unauthorized access to this Action Matrix.');
 
@@ -229,6 +230,11 @@ class ActionMatrixController extends Controller
             ->sortBy('created_at')
             ->values();
 
+        $smComments = \App\Models\AcmSmComment::with('commenter')
+            ->where('acm_id', $master->acm_id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
         $employeeIds = collect([
                 $master->created_by,
                 $master->updated_by,
@@ -237,6 +243,7 @@ class ActionMatrixController extends Controller
             ->concat($master->comments->pluck('created_by'))
             ->concat($movements->pluck('from_emp_id'))
             ->concat($movements->pluck('to_emp_id'))
+            ->concat($smComments->pluck('emp_id'))
             ->filter()
             ->unique()
             ->values();
@@ -249,11 +256,6 @@ class ActionMatrixController extends Controller
         $movementHistory = $user->isPo()
             ? $movements->where('source', 'PO')->values()
             : $movements;
-
-        $smComments = \App\Models\AcmSmComment::with('commenter')
-            ->where('acm_id', $master->acm_id)
-            ->orderBy('created_at', 'asc')
-            ->get();
 
         return view('action_matrix.show', compact(
             'master',

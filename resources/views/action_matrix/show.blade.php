@@ -51,18 +51,6 @@
 @endphp
 
 <div class="container-fluid action-detail-page pb-2" style="margin-top: -0.5rem;">
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show py-2 small mb-2" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show py-2 small mb-2" role="alert">
-            {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
     <div class="detail-hero mb-2">
         <div class="d-flex flex-column flex-xl-row justify-content-between gap-2">
             <div>
@@ -315,7 +303,11 @@
                             $sourceClass = $comment->comment_source === 'PO' ? 'warning' : 'primary';
                         @endphp
                         <article class="comment-item">
-                            <div class="avatar avatar-{{ $sourceClass }}">{{ $initials($comment->created_by) }}</div>
+                            <div class="avatar avatar-{{ $sourceClass }}">
+                                <img src="{{ asset('storage/avatars/' . $comment->created_by . '.jpg') }}"
+                                     alt="" onload="this.style.display='block';this.nextElementSibling.style.visibility='hidden'" onerror="this.remove()">
+                                <span>{{ $initials($comment->created_by) }}</span>
+                            </div>
                             <div class="comment-body">
                                 <div class="comment-topline">
                                     <div>
@@ -381,6 +373,11 @@
                 <div class="comment-list mb-3">
                     @forelse($smComments as $sc)
                         <article class="comment-item">
+                            <div class="avatar avatar-mgmt">
+                                <img src="{{ asset('storage/avatars/' . $sc->emp_id . '.jpg') }}"
+                                     alt="" onload="this.style.display='block';this.nextElementSibling.style.visibility='hidden'" onerror="this.remove()">
+                                <span>{{ $initials($sc->emp_id) }}</span>
+                            </div>
                             <div class="comment-body">
                                 <div class="comment-topline">
                                     <div>
@@ -416,12 +413,6 @@
                 <form action="{{ route('action-matrix.sm-comments.store', $master->acm_id) }}"
                       method="POST" enctype="multipart/form-data" class="border-top pt-3">
                     @csrf
-                    @if(session('success'))
-                        <div class="alert alert-success alert-dismissible fade show py-2 small" role="alert">
-                            {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Your Comment <span class="text-danger">*</span></label>
                         <textarea name="sm_comment" class="form-control form-control-sm" rows="4"
@@ -1124,16 +1115,30 @@
 
     .avatar {
         align-items: center;
-        border-radius: 50%;
         color: #fff;
         display: inline-flex;
         flex: 0 0 auto;
         font-size: 0.72rem;
         font-weight: 800;
-        height: 34px;
+        border-radius: 1px;
+        height: 65px;
         justify-content: center;
         margin-top: 2px;
-        width: 34px;
+        overflow: hidden;
+        position: relative;
+        width: 50px;
+    }
+
+    .avatar img {
+        display: none;
+        height: 100%;
+        left: 0;
+        object-fit: cover;
+        object-position: top center;
+        position: absolute;
+        top: 0;
+        width: 100%;
+        z-index: 1;
     }
 
     .avatar-primary {
@@ -1142,6 +1147,10 @@
 
     .avatar-warning {
         background: #b7791f;
+    }
+
+    .avatar-mgmt {
+        background: #3d2b6b;
     }
 
     .comment-body {
