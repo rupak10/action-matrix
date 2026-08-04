@@ -11,9 +11,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <div class="sl-card">
-                <div class="sl-card-header">
-                    <h5 class="mb-0">Role Details</h5>
-                </div>
+
                 <div class="p-4">
                     <form action="{{ route('roles.store') }}" method="POST">
                         @csrf

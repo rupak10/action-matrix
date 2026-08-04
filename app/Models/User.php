@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'emp_id', 'emp_type', 'designation', 'dept_id', 'dept_name', 'unit_id', 'unit_name', 'po_code', 'supervisor_emp_id'])]
+#[Fillable(['name', 'email', 'password', 'emp_id', 'emp_type', 'designation', 'dept_id', 'dept_name', 'unit_id', 'unit_name', 'po_code'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -64,11 +64,37 @@ class User extends Authenticatable
         return strtoupper($this->emp_type ?? '') === 'PO';
     }
 
-    /**
-     * Get the supervisor user.
-     */
-    public function supervisor()
+    public function supervisors()
     {
-        return $this->belongsTo(User::class, 'supervisor_emp_id', 'emp_id');
+        return $this->hasMany(UserSupervisor::class, 'emp_id', 'emp_id');
+    }
+
+    public function primarySupervisorEmpId(): ?string
+    {
+        return $this->supervisors()->where('is_primary', true)->value('supervisor_emp_id');
+    }
+
+    public function isSeniorManagement(): bool
+    {
+        return $this->hasAnyRole(['SM_MD', 'SM_DMD', 'SM_SGM']);
+    }
+
+    public function isSmMd(): bool
+    {
+        return $this->hasAnyRole(['SM_MD']);
+    }
+
+    // Returns PO codes assigned to this SM user (DMD/SGM).
+    // MD has full access and should never need to call this.
+    public function assignedPoCodes(): array
+    {
+        return UserPoAssignment::where('emp_id', $this->emp_id)
+            ->pluck('po_code')
+            ->toArray();
+    }
+
+    public function poAssignments()
+    {
+        return $this->hasMany(UserPoAssignment::class, 'emp_id', 'emp_id');
     }
 }

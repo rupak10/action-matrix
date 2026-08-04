@@ -21,31 +21,46 @@ class ActionMatrixService
     {
         $q = DB::table('acm_master');
 
-        if (!$this->isAdmin($user)) {
-            $q->where(function ($inner) use ($user) {
-                $inner->where('created_by', $user->emp_id)
-                      ->orWhere('current_desk_emp_id', $user->emp_id);
-
-                // Any PO user: all matrices for their PO that are in PO workflow or closed
-                if ($user->isPo() && $user->po_code) {
-                    $inner->orWhere(function ($q2) use ($user) {
-                        $q2->where('po_code', $user->po_code)
-                           ->where(function ($q3) {
-                               $q3->where('po_inbox', 'Y')->orWhere('status', 'CLOSED');
-                           });
-                    });
-                }
-
-                // Supervisors: detected by checking if any subordinate points to this user
-                $isSupervisor = DB::table('users')
-                    ->where('supervisor_emp_id', $user->emp_id)->exists();
-
-                if ($isSupervisor && $user->isPksf()) {
-                    // PKSF Supervisor sees all closed matrices
-                    $inner->orWhere('status', 'CLOSED');
-                }
-            });
+        if ($this->isAdmin($user)) {
+            return $q;
         }
+
+        // Senior Management: see observations once past internal PKSF drafting stage
+        if ($user->isSeniorManagement()) {
+            $q->whereNotIn('status', ['SAVED', 'SUBMITTED', 'REJECTED']);
+
+            if (!$user->isSmMd()) {
+                // DMD/SGM: scoped to assigned POs only
+                $assignedPos = $user->assignedPoCodes();
+                $q->whereIn('po_code', $assignedPos);
+            }
+
+            return $q;
+        }
+
+        $q->where(function ($inner) use ($user) {
+            $inner->where('created_by', $user->emp_id)
+                  ->orWhere('current_desk_emp_id', $user->emp_id);
+
+            // Any PO user: all matrices for their PO that are in PO workflow or closed
+            if ($user->isPo() && $user->po_code) {
+                $inner->orWhere(function ($q2) use ($user) {
+                    $q2->where('po_code', $user->po_code)
+                       ->where(function ($q3) {
+                           $q3->where('po_inbox', 'Y')->orWhere('status', 'CLOSED');
+                       });
+                });
+            }
+
+            // Supervisors: detected by checking if any subordinate points to this user
+            $isSupervisor = DB::table('user_supervisors')
+                ->where('supervisor_emp_id', $user->emp_id)->exists();
+
+            if ($isSupervisor && $user->isPksf()) {
+                // PKSF Supervisor sees all closed and reopened matrices
+                $inner->orWhereIn('status', ['CLOSED', 'REOPENED']);
+            }
+        });
 
         return $q;
     }
@@ -86,8 +101,11 @@ class ActionMatrixService
             case 'created_by_me':
                 $base->where('created_by', $user->emp_id);
                 break;
+            case 'ongoing':
+                $base->whereNotIn('status', ['SAVED', 'CLOSED', 'REOPENED']);
+                break;
             case 'completed':
-                $base->where('status', 'CLOSED');
+                $base->whereIn('status', ['CLOSED', 'REOPENED']);
                 break;
         }
 
@@ -96,9 +114,27 @@ class ActionMatrixService
             $base->where('po_code', $filters['po_code']);
         }
 
-        // ── Priority filter (Dropdown 3) ──────────────────────────────────
+        // ── Visit Type filter ─────────────────────────────────────────────
+        if (!empty($filters['visit_type'])) {
+            $base->where('visit_type', $filters['visit_type']);
+        }
+
+        // ── Category filter ───────────────────────────────────────────────
+        if (!empty($filters['category'])) {
+            $base->where('observation_category', $filters['category']);
+        }
+
+        // ── Priority filter ───────────────────────────────────────────────
         if (!empty($filters['priority'])) {
             $base->where('priority', $filters['priority']);
+        }
+
+        // ── Visit date range filter ───────────────────────────────────────
+        if (!empty($filters['visit_date_from'])) {
+            $base->where('visiting_date_to', '>=', $filters['visit_date_from']);
+        }
+        if (!empty($filters['visit_date_to'])) {
+            $base->where('visiting_date', '<=', $filters['visit_date_to']);
         }
 
         // ── Total before global search ────────────────────────────────────
@@ -143,6 +179,11 @@ class ActionMatrixService
             ->get()
             ->groupBy('acm_id');
 
+        $pksfAttachments = DB::table('acm_master_file_attachment')
+            ->whereIn('acm_id', $acmIds)
+            ->get(['acm_id', 'file_name', 'file_path', 'file_size'])
+            ->groupBy('acm_id');
+
         $poMovements = DB::table('acm_po_movements')
             ->whereIn('acm_id', $acmIds)
             ->get()
@@ -166,7 +207,7 @@ class ActionMatrixService
             ->pluck('name', 'emp_id');
 
         // ── Build data rows ───────────────────────────────────────────────
-        $data = $rows->map(function ($matrix) use ($pksfMovements, $poMovements, $usersByEmpId, $user) {
+        $data = $rows->map(function ($matrix) use ($pksfMovements, $poMovements, $pksfAttachments, $usersByEmpId, $user) {
 
             // Latest incoming movement for this matrix
             $allMoves = collect($pksfMovements->get($matrix->acm_id, collect()))
@@ -191,6 +232,8 @@ class ActionMatrixService
                 'acm_id'               => $matrix->acm_id,
                 'po_code'              => $matrix->po_code,
                 'visiting_date'        => \Carbon\Carbon::parse($matrix->visiting_date)->format('d M, Y'),
+                'visiting_date_to'     => \Carbon\Carbon::parse($matrix->visiting_date_to)->format('d M, Y'),
+                'visit_type'           => $matrix->visit_type,
                 'observation_category' => $matrix->observation_category,
                 'priority'             => $matrix->priority,
                 'status'               => $matrix->status,
@@ -199,6 +242,13 @@ class ActionMatrixService
                 '_current_desk_emp_id' => $matrix->current_desk_emp_id,
                 '_created_by'          => $matrix->created_by,
                 '_pksf_observation'    => $matrix->pksf_observation,
+                '_direction_to_po'     => $matrix->direction_to_po,
+                '_pksf_attachments'    => $pksfAttachments->get($matrix->acm_id, collect())
+                                            ->map(fn($f) => [
+                                                'name' => $f->file_name,
+                                                'path' => $f->file_path,
+                                                'size' => $f->file_size,
+                                            ])->values()->toArray(),
                 '_has_comments'        => DB::table('acm_comments')
                                             ->where('acm_id', $matrix->acm_id)
                                             ->exists(),
@@ -257,7 +307,8 @@ class ActionMatrixService
             $master = new AcmMaster();
             $master->acm_id = $acmId;
             $master->po_code = $data['po_code'];
-            $master->visiting_date = $data['visiting_date'];
+            $master->visiting_date    = $data['visiting_date'];
+            $master->visiting_date_to = $data['visiting_date_to'];
             
             // Set internally from logged-in user's department
             $master->observation_dept = $user->dept_name ?? 'N/A';
@@ -358,7 +409,8 @@ class ActionMatrixService
             }
 
             $master->update([
-                'visiting_date' => $data['visiting_date'],
+                'visiting_date'    => $data['visiting_date'],
+                'visiting_date_to' => $data['visiting_date_to'],
                 'observation_category' => $data['observation_category'],
                 'visit_type' => $data['visit_type'],
                 'visit_category' => $data['visit_category'],
@@ -414,9 +466,12 @@ class ActionMatrixService
         $acmId = trim($acmId);
         
         DB::transaction(function () use ($acmId, $remarks, $user) {
-            $supervisorId = $user->supervisor_emp_id;
+            $supervisorId = DB::table('user_supervisors')
+                ->where('emp_id', $user->emp_id)
+                ->where('is_primary', true)
+                ->value('supervisor_emp_id');
             if (!$supervisorId) {
-                throw new \Exception('You do not have a supervisor assigned. Cannot forward.');
+                throw new \Exception('You do not have a primary supervisor assigned. Cannot forward.');
             }
 
             // 1. Update acm_master directly using Query Builder
@@ -680,10 +735,13 @@ class ActionMatrixService
         $acmId = trim($acmId);
         DB::transaction(function () use ($acmId, $remarks, $user) {
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
-            $supervisorId = $user->supervisor_emp_id;
+            $supervisorId = DB::table('user_supervisors')
+                ->where('emp_id', $user->emp_id)
+                ->where('is_primary', true)
+                ->value('supervisor_emp_id');
 
             if (!$supervisorId) {
-                throw new \Exception('No PO supervisor assigned to your profile.');
+                throw new \Exception('No primary PO supervisor assigned to your profile.');
             }
 
             $master->update([
@@ -804,9 +862,12 @@ class ActionMatrixService
         $acmId = trim($acmId);
         DB::transaction(function () use ($acmId, $remarks, $user) {
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
-            $supervisorId = $user->supervisor_emp_id;
+            $supervisorId = DB::table('user_supervisors')
+                ->where('emp_id', $user->emp_id)
+                ->where('is_primary', true)
+                ->value('supervisor_emp_id');
             if (!$supervisorId) {
-                throw new \Exception('No supervisor assigned to your profile. Cannot request closure.');
+                throw new \Exception('No primary supervisor assigned to your profile. Cannot request closure.');
             }
 
             $master->update([
@@ -838,9 +899,12 @@ class ActionMatrixService
         DB::transaction(function () use ($data, $user) {
             $acmId = trim($data['acm_id']);
             $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
-            $supervisorId = $user->supervisor_emp_id;
+            $supervisorId = DB::table('user_supervisors')
+                ->where('emp_id', $user->emp_id)
+                ->where('is_primary', true)
+                ->value('supervisor_emp_id');
             if (!$supervisorId) {
-                throw new \Exception('No supervisor assigned to your profile. Cannot request revision.');
+                throw new \Exception('No primary supervisor assigned to your profile. Cannot request revision.');
             }
 
             // 0. Delete any existing attachments the user flagged for removal
@@ -927,6 +991,47 @@ class ActionMatrixService
                 'to_emp_id' => $supervisorId,
                 'action_type' => 'REVISION_REQUESTED',
                 'remarks' => $data['comment_detail'] ?? '',
+                'created_by' => $user->emp_id,
+                'created_at' => now(),
+            ]);
+        });
+    }
+
+    /**
+     * PKSF Supervisor reopens a CLOSED observation and routes it back to PO Supervisor.
+     */
+    public function reopenMatrix(string $acmId, string $remarks, \App\Models\User $user): void
+    {
+        $acmId = trim($acmId);
+        DB::transaction(function () use ($acmId, $remarks, $user) {
+            $master = AcmMaster::where('acm_id', $acmId)->firstOrFail();
+
+            $poSupervisor = \App\Models\User::whereHas('roles', function ($q) {
+                $q->where('name', 'PO_SUPERVISOR');
+            })->where('po_code', $master->po_code)->first();
+
+            if (!$poSupervisor) {
+                throw new \Exception('No PO Supervisor found for PO Code ' . $master->po_code . '. Cannot reopen.');
+            }
+
+            $master->update([
+                'status'              => 'REOPENED',
+                'resolution_status'   => 'NOT_RESOLVED',
+                'current_desk_emp_id' => $poSupervisor->emp_id,
+                'po_inbox'            => 'Y',
+                'is_editable_by_po'   => 'N',
+                'updated_at'          => now(),
+                'updated_by'          => $user->emp_id,
+            ]);
+
+            $nextSl = DB::table('acm_pksf_movements')->where('acm_id', $acmId)->max('sl') + 1;
+            DB::table('acm_pksf_movements')->insert([
+                'acm_id'     => $acmId,
+                'sl'         => $nextSl,
+                'from_emp_id'=> $user->emp_id,
+                'to_emp_id'  => $poSupervisor->emp_id,
+                'action_type'=> 'REOPENED',
+                'remarks'    => $remarks,
                 'created_by' => $user->emp_id,
                 'created_at' => now(),
             ]);

@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable([
     'acm_id', 
     'po_code', 
-    'visiting_date', 
+    'visiting_date',      // from date
+    'visiting_date_to',   // to date
     'observation_dept', 
     'observation_category', 
     'visit_type', 

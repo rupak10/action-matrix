@@ -38,7 +38,7 @@
                             'label'  => 'New Follow-up',
                             'route'  => 'action-matrix.create',
                             'active' => request()->routeIs('action-matrix.create'),
-                            'roles'  => ['PKSF_CO'],
+                            'roles'  => ['PKSF_CO', 'Admin', 'Super_Admin'],
                         ],
                     ],
                 ],
@@ -48,10 +48,15 @@
                     'pksf_only' => true,   // Reports menu visible to PKSF users only
                     'children'  => [
                         [
-                            'label'  => 'Report 1',
+                            'label'  => 'Sample Reports',
                             'route'  => 'reports.report1',
                             'active' => request()->routeIs('reports.report1'),
                             'target' => '_blank',
+                        ],
+                        [
+                            'label'  => 'Action Matrix Reports',
+                            'route'  => 'reports.action-matrix-report',
+                            'active' => request()->routeIs('reports.action-matrix-report*'),
                         ],
                     ],
                 ],
@@ -79,6 +84,16 @@
                             'label' => 'Assign Roles',
                             'route' => 'user-roles.index',
                             'active' => request()->routeIs('user-roles.*'),
+                        ],
+                        [
+                            'label'  => 'PO Assignments',
+                            'route'  => 'admin.po-assignments.index',
+                            'active' => request()->routeIs('admin.po-assignments.*'),
+                        ],
+                        [
+                            'label'  => 'PO Information',
+                            'route'  => 'admin.po-info.index',
+                            'active' => request()->routeIs('admin.po-info.*'),
                         ],
                         [
                             'label' => 'Profile Settings',

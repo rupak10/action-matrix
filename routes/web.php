@@ -31,6 +31,15 @@ Route::middleware('auth')->group(function () {
 
         // User Management
         Route::resource('users', \App\Http\Controllers\UserController::class);
+
+        // PO Info Management
+        Route::get('/admin/po-info', [\App\Http\Controllers\PoInfoController::class, 'index'])->name('admin.po-info.index');
+        Route::get('/admin/po-info/create', [\App\Http\Controllers\PoInfoController::class, 'create'])->name('admin.po-info.create');
+        Route::post('/admin/po-info', [\App\Http\Controllers\PoInfoController::class, 'store'])->name('admin.po-info.store');
+        Route::get('/admin/po-info/{id}/edit', [\App\Http\Controllers\PoInfoController::class, 'edit'])->name('admin.po-info.edit');
+        Route::put('/admin/po-info/{id}', [\App\Http\Controllers\PoInfoController::class, 'update'])->name('admin.po-info.update');
+        Route::delete('/admin/po-info/{id}', [\App\Http\Controllers\PoInfoController::class, 'destroy'])->name('admin.po-info.destroy');
+        Route::patch('/admin/po-info/{id}/activate', [\App\Http\Controllers\PoInfoController::class, 'activate'])->name('admin.po-info.activate');
     });
 
     // Action Matrix Module
@@ -50,6 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/action-matrix/{acmId}/my-draft', [ActionMatrixController::class, 'getMyDraft'])->name('action-matrix.my-draft');
     
     // PKSF Workflow Routes (Closure & Revision)
+    Route::post('/action-matrix/reopen', [ActionMatrixController::class, 'reopen'])->name('action-matrix.reopen');
     Route::post('/action-matrix/request-closure', [ActionMatrixController::class, 'requestClosure'])->name('action-matrix.request-closure');
     Route::post('/action-matrix/request-revision', [ActionMatrixController::class, 'requestRevision'])->name('action-matrix.request-revision');
     Route::post('/action-matrix/approve-closure', [ActionMatrixController::class, 'approveClosure'])->name('action-matrix.approve-closure');
@@ -59,6 +69,16 @@ Route::middleware('auth')->group(function () {
     
     Route::resource('action-matrix', ActionMatrixController::class);
 
+    // Senior Management comments
+    Route::post('/action-matrix/{acm_id}/sm-comments', [\App\Http\Controllers\AcmSmCommentController::class, 'store'])
+        ->name('action-matrix.sm-comments.store')
+        ->middleware('role:SM_MD,SM_DMD,SM_SGM');
+
+    // PO Assignment admin
+    Route::get('/admin/po-assignments', [\App\Http\Controllers\PoAssignmentController::class, 'index'])->name('admin.po-assignments.index');
+    Route::post('/admin/po-assignments', [\App\Http\Controllers\PoAssignmentController::class, 'store'])->name('admin.po-assignments.store');
+    Route::delete('/admin/po-assignments/{id}', [\App\Http\Controllers\PoAssignmentController::class, 'destroy'])->name('admin.po-assignments.destroy');
+
     // Analytics — authorization handled inside AnalyticsController
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
     Route::get('/analytics/data', [AnalyticsController::class, 'getData'])->name('analytics.data');
@@ -66,6 +86,8 @@ Route::middleware('auth')->group(function () {
     // Reports — authorization handled inside ReportController
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/report-1', [ReportController::class, 'report1'])->name('report1');
+        Route::get('/action-matrix-report', [ReportController::class, 'actionMatrixFilter'])->name('action-matrix-report');
+        Route::get('/action-matrix-report/generate', [ReportController::class, 'actionMatrixGenerate'])->name('action-matrix-report.generate');
     });
 });
 

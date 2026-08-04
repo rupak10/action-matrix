@@ -14,32 +14,29 @@ class UserController extends Controller
         $this->userService = $userService;
     }
 
-    /**
-     * Demo data for dropdowns
-     */
     protected function getDemoData()
     {
         return [
             'departments' => [
-                'IT-01' => 'Information Technology',
-                'HR-01' => 'Human Resources',
+                'IT-01'  => 'Information Technology',
+                'HR-01'  => 'Human Resources',
                 'FIN-01' => 'Finance',
                 'OPS-01' => 'Operations',
-                'AUD-01' => 'Internal Audit'
+                'AUD-01' => 'Internal Audit',
             ],
             'units' => [
                 'UNIT-A' => 'Core Development',
                 'UNIT-B' => 'Quality Assurance',
                 'UNIT-C' => 'Talent Acquisition',
                 'UNIT-D' => 'Risk Management',
-                'UNIT-E' => 'Compliance'
+                'UNIT-E' => 'Compliance',
             ],
             'pos' => [
                 'PO-001' => 'PO One',
                 'PO-007' => 'PO Seven',
                 'PO-012' => 'PO Twelve',
-                'PO-045' => 'PO Forty-Five'
-            ]
+                'PO-045' => 'PO Forty-Five',
+            ],
         ];
     }
 
@@ -51,36 +48,38 @@ class UserController extends Controller
 
     public function create()
     {
-        $data = $this->getDemoData();
+        $data        = $this->getDemoData();
         $supervisors = \App\Models\User::select('emp_id', 'name')->orderBy('name')->get();
+
         return view('users.create', [
             'departments' => $data['departments'],
-            'units' => $data['units'],
-            'pos' => $data['pos'],
-            'supervisors' => $supervisors
+            'units'       => $data['units'],
+            'pos'         => $data['pos'],
+            'supervisors' => $supervisors,
         ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'emp_id' => 'required|string|max:20|unique:users',
-            'emp_type' => 'required|in:PKSF,PO',
-            'po_code' => 'required_if:emp_type,PO|nullable|string',
-            'designation' => 'required|string|max:100',
-            'dept_id' => 'required|string',
-            'unit_id' => 'required|string',
-            'supervisor_emp_id' => 'nullable|string|exists:users,emp_id',
+            'name'                       => 'required|string|max:255',
+            'email'                      => 'required|string|email|max:255|unique:users',
+            'password'                   => 'required|string|min:8|confirmed',
+            'emp_id'                     => 'required|string|max:20|unique:users',
+            'emp_type'                   => 'required|in:PKSF,PO',
+            'po_code'                    => 'required_if:emp_type,PO|nullable|string',
+            'designation'                => 'required|string|max:100',
+            'dept_id'                    => 'required|string',
+            'unit_id'                    => 'required|string',
+            'supervisor_emp_ids'         => 'nullable|array',
+            'supervisor_emp_ids.*'       => 'string|exists:users,emp_id',
+            'primary_supervisor_emp_id'  => 'nullable|string|exists:users,emp_id',
         ]);
 
-        // Map IDs back to names for demo purposes
-        $demo = $this->getDemoData();
-        $data = $request->all();
+        $demo         = $this->getDemoData();
+        $data         = $request->all();
         $data['dept_name'] = $demo['departments'][$request->dept_id] ?? 'Other';
-        $data['unit_name'] = $demo['units'][$request->unit_id] ?? 'Other';
+        $data['unit_name'] = $demo['units'][$request->unit_id]       ?? 'Other';
 
         $this->userService->createUser($data);
 
@@ -89,38 +88,41 @@ class UserController extends Controller
 
     public function edit($id)
     {
-        $user = $this->userService->getUserById($id);
-        $data = $this->getDemoData();
+        $user        = $this->userService->getUserById($id);
+        $data        = $this->getDemoData();
         $supervisors = \App\Models\User::where('id', '!=', $id)->select('emp_id', 'name')->orderBy('name')->get();
-        
+
         return view('users.edit', [
-            'user' => $user,
-            'departments' => $data['departments'],
-            'units' => $data['units'],
-            'pos' => $data['pos'],
-            'supervisors' => $supervisors
+            'user'               => $user,
+            'departments'        => $data['departments'],
+            'units'              => $data['units'],
+            'pos'                => $data['pos'],
+            'supervisors'        => $supervisors,
+            'existingSupervisors' => $user->supervisors()->with('supervisor')->get(),
         ]);
     }
 
     public function update(Request $request, $id)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'emp_id' => 'required|string|max:20|unique:users,emp_id,'.$id,
-            'emp_type' => 'required|in:PKSF,PO',
-            'po_code' => 'required_if:emp_type,PO|nullable|string',
-            'designation' => 'required|string|max:100',
-            'dept_id' => 'required|string',
-            'unit_id' => 'required|string',
-            'supervisor_emp_id' => 'nullable|string|exists:users,emp_id',
+            'name'                       => 'required|string|max:255',
+            'email'                      => 'required|string|email|max:255|unique:users,email,'.$id,
+            'password'                   => 'nullable|string|min:8|confirmed',
+            'emp_id'                     => 'required|string|max:20|unique:users,emp_id,'.$id,
+            'emp_type'                   => 'required|in:PKSF,PO',
+            'po_code'                    => 'required_if:emp_type,PO|nullable|string',
+            'designation'                => 'required|string|max:100',
+            'dept_id'                    => 'required|string',
+            'unit_id'                    => 'required|string',
+            'supervisor_emp_ids'         => 'nullable|array',
+            'supervisor_emp_ids.*'       => 'string|exists:users,emp_id',
+            'primary_supervisor_emp_id'  => 'nullable|string|exists:users,emp_id',
         ]);
 
-        $demo = $this->getDemoData();
-        $data = $request->all();
+        $demo         = $this->getDemoData();
+        $data         = $request->all();
         $data['dept_name'] = $demo['departments'][$request->dept_id] ?? 'Other';
-        $data['unit_name'] = $demo['units'][$request->unit_id] ?? 'Other';
+        $data['unit_name'] = $demo['units'][$request->unit_id]       ?? 'Other';
 
         $this->userService->updateUser($id, $data);
 

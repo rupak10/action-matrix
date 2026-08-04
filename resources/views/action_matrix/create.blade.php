@@ -26,9 +26,9 @@
                         @csrf
                         
                         <div class="row g-3">
-                            <!-- PO Selection -->
+                            <!-- Row 1: PO | Visit Type | Visit From | Visit To -->
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold mb-1">Partner Organization (PO)</label>
+                                <label class="form-label small fw-bold mb-1">Partner Organization (PO) <span class="text-danger">*</span></label>
                                 <select name="po_code" class="form-select form-select-sm sl-select2" required>
                                     <option value="">Select PO</option>
                                     @foreach($poList as $po)
@@ -39,29 +39,8 @@
                                 </select>
                             </div>
 
-                            <!-- Visiting Date -->
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold mb-1">Visiting Date</label>
-                                <div class="premium-date-field">
-                                    <i class="bi bi-calendar3"></i>
-                                    <input type="text" name="visiting_date" class="form-control form-control-sm js-premium-date" value="{{ old('visiting_date') }}" placeholder="Select visiting date" required>
-                                </div>
-                            </div>
-
-                            <!-- Category -->
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold mb-1">Observation Category</label>
-                                <select name="observation_category" class="form-select form-select-sm" required>
-                                    <option value="">Select Category</option>
-                                    @foreach($categories as $cat)
-                                        <option value="{{ $cat }}" {{ old('observation_category') == $cat ? 'selected' : '' }}>{{ $cat }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <!-- Type & Category -->
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold mb-1">Visit Type</label>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-1">Visit Type <span class="text-danger">*</span></label>
                                 <select name="visit_type" class="form-select form-select-sm" required>
                                     <option value="">Select Type</option>
                                     @foreach($visitTypes as $type)
@@ -71,7 +50,36 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold mb-1">Visit Category</label>
+                                {{-- visiting_date: used as "Visit From" (ONSITE) or "Addressing Date From" (OFFSITE) --}}
+                                <label id="label_date_from" class="form-label small fw-bold mb-1"><span id="label_date_from_text">Visit From</span> <span class="text-danger">*</span></label>
+                                <div class="premium-date-field">
+                                    <i class="bi bi-calendar3"></i>
+                                    <input type="text" name="visiting_date" class="form-control form-control-sm js-premium-date" value="{{ old('visiting_date') }}" placeholder="From date" required>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                {{-- visiting_date_to: used as "Visit To" (ONSITE) or "Addressing Date To" (OFFSITE) --}}
+                                <label id="label_date_to" class="form-label small fw-bold mb-1"><span id="label_date_to_text">Visit To</span> <span class="text-danger">*</span></label>
+                                <div class="premium-date-field">
+                                    <i class="bi bi-calendar3"></i>
+                                    <input type="text" name="visiting_date_to" class="form-control form-control-sm js-premium-date" value="{{ old('visiting_date_to') }}" placeholder="To date" required>
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Category | Visit Category | Letter Issue | Letter Response -->
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-1">Observation Category <span class="text-danger">*</span></label>
+                                <select name="observation_category" class="form-select form-select-sm" required>
+                                    <option value="">Select Category</option>
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat }}" {{ old('observation_category') == $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-1">Visit Category <span class="text-danger">*</span></label>
                                 <select name="visit_category" class="form-select form-select-sm" required>
                                     <option value="">Select Visit Category</option>
                                     @foreach($visitCategories as $vcat)
@@ -80,7 +88,6 @@
                                 </select>
                             </div>
 
-                            <!-- Communication Dates -->
                             <div class="col-md-3">
                                 <label class="form-label small fw-bold mb-1">Letter Issue Date</label>
                                 <div class="premium-date-field">
@@ -90,7 +97,7 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold mb-1">Letter Response Date</label>
+                                <label class="form-label small fw-bold mb-1">Letter Response Date (Expected)</label>
                                 <div class="premium-date-field">
                                     <i class="bi bi-calendar3"></i>
                                     <input type="text" name="letter_response_date" class="form-control form-control-sm js-premium-date" value="{{ old('letter_response_date') }}" placeholder="Select response date">
@@ -99,12 +106,12 @@
 
                             <!-- Observation Areas -->
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold mb-1">PKSF Observation</label>
+                                <label class="form-label small fw-bold mb-1">PKSF Observation <span class="text-danger">*</span></label>
                                 <textarea name="pksf_observation" class="form-control form-control-sm" rows="5" placeholder="Enter observation..." required>{{ old('pksf_observation') }}</textarea>
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold mb-1">Direction to PO</label>
+                                <label class="form-label small fw-bold mb-1">Direction to PO <span class="text-danger">*</span></label>
                                 <textarea name="direction_to_po" class="form-control form-control-sm" rows="5" placeholder="Enter instructions..." required>{{ old('direction_to_po') }}</textarea>
                             </div>
                             
@@ -120,7 +127,7 @@
 
                             <!-- Configuration Row -->
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold mb-1">Action Matrix</label>
+                                <label class="form-label small fw-bold mb-1">Action Matrix <span class="text-danger">*</span></label>
                                 <select name="action_matrix" class="form-select form-select-sm" required>
                                     <option value="Y" {{ old('action_matrix', 'Y') == 'Y' ? 'selected' : '' }}>YES</option>
                                     <option value="N" {{ old('action_matrix') == 'N' ? 'selected' : '' }}>NO</option>
@@ -128,7 +135,7 @@
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold mb-1">Priority</label>
+                                <label class="form-label small fw-bold mb-1">Priority <span class="text-danger">*</span></label>
                                 <select name="priority" class="form-select form-select-sm" required>
                                     @foreach($priorities as $prio)
                                         <option value="{{ $prio }}" {{ old('priority', 'MEDIUM') == $prio ? 'selected' : '' }}>{{ $prio }}</option>
@@ -139,7 +146,7 @@
                             <div class="col-md-4 d-flex align-items-end">
                                 <div class="d-flex w-100 gap-2">
                                     <button type="submit" class="btn btn-sm btn-primary flex-grow-1 py-2 shadow-sm">
-                                        <i class="bi bi-save me-1"></i> Save Matrix
+                                        <i class="bi bi-save me-1"></i> Save Observation
                                     </button>
                                 </div>
                             </div>
@@ -272,6 +279,20 @@
             allowInput: true,
             disableMobile: true,
         });
+
+        // Update date field labels based on visit type
+        const visitTypeSelect  = document.querySelector('select[name="visit_type"]');
+        const labelDateFromText = document.getElementById('label_date_from_text');
+        const labelDateToText   = document.getElementById('label_date_to_text');
+
+        function updateDateLabels() {
+            const isOffsite = visitTypeSelect.value === 'OFFSITE';
+            labelDateFromText.textContent = isOffsite ? 'Addressing Date From' : 'Visit From';
+            labelDateToText.textContent   = isOffsite ? 'Addressing Date To'   : 'Visit To';
+        }
+
+        visitTypeSelect.addEventListener('change', updateDateLabels);
+        updateDateLabels(); // run on load in case old() restores a value
 
         const fileInput = document.getElementById('attachmentInput');
         const fileListContainer = document.getElementById('fileListContainer');
