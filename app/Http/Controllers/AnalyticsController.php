@@ -9,9 +9,6 @@ class AnalyticsController extends Controller
 {
     public function __construct(protected AnalyticsService $analytics) {}
 
-    /**
-     * Full-page analytics dashboard.
-     */
     public function index(Request $request): \Illuminate\View\View
     {
         $user   = auth()->user();
@@ -23,12 +20,10 @@ class AnalyticsController extends Controller
         return view('analytics.index', array_merge($data, [
             'selectedPeriod' => $period,
             'selectedPo'     => $poCode,
+            'currentUser'    => $user,
         ]));
     }
 
-    /**
-     * AJAX endpoint — returns JSON for filter-driven chart refresh.
-     */
     public function getData(Request $request): \Illuminate\Http\JsonResponse
     {
         $user   = auth()->user();

@@ -10,7 +10,7 @@
                     <h3 class="fw-bold mb-0" style="color:#1e3a5f;">Action Matrix Reports</h3>
                     <p class="text-muted small mb-0">Select filters and generate the report.</p>
                 </div>
-                <a href="{{ route('action-matrix.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                <a href="{{ route('visits.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
                     <i class="bi bi-arrow-left me-1"></i> Back
                 </a>
             </div>

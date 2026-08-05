@@ -5,6 +5,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ActionMatrixController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\VisitController;
+use App\Http\Controllers\ObservationController;
+use App\Http\Controllers\ObservationCommentController;
+use App\Http\Controllers\VisitSmCommentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -73,6 +77,54 @@ Route::middleware('auth')->group(function () {
     Route::post('/action-matrix/{acm_id}/sm-comments', [\App\Http\Controllers\AcmSmCommentController::class, 'store'])
         ->name('action-matrix.sm-comments.store')
         ->middleware('role:SM_MD,SM_DMD,SM_SGM');
+
+    // ── Visit Module ───────────────────────────────────────────────────────
+
+    // DataTables endpoint (before resource so it doesn't match as {visit})
+    Route::get('/visits/data', [VisitController::class, 'getData'])->name('visits.data');
+
+    // CRUD
+    Route::resource('visits', VisitController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+
+    // Visit workflow transitions
+    Route::prefix('visits/{visit}')->name('visits.')->group(function () {
+        Route::post('forward',            [VisitController::class, 'forward'])->name('forward');
+        Route::post('send-to-po',         [VisitController::class, 'sendToPo'])->name('send-to-po');
+        Route::post('reject',             [VisitController::class, 'reject'])->name('reject');
+        Route::post('forward-po-officer', [VisitController::class, 'forwardToPoOfficer'])->name('forward-po-officer');
+        Route::post('submit-po-so',       [VisitController::class, 'submitToPoSupervisor'])->name('submit-po-so');
+        Route::post('approve-po',         [VisitController::class, 'approvePoResponse'])->name('approve-po');
+        Route::get('history',             [VisitController::class, 'getHistory'])->name('history');
+
+        // Observations nested under visit
+        Route::prefix('observations')->name('observations.')->group(function () {
+            Route::post('/',                        [ObservationController::class, 'store'])->name('store');
+            Route::get('{observation}/edit-data',   [ObservationController::class, 'editData'])->name('edit-data');
+            Route::post('{observation}',            [ObservationController::class, 'update'])->name('update');
+            Route::delete('{observation}',          [ObservationController::class, 'destroy'])->name('destroy');
+        });
+
+        // SM comments for this visit
+        Route::post('sm-comments', [VisitSmCommentController::class, 'store'])
+            ->name('sm-comments.store')
+            ->middleware('role:SM_MD,SM_DMD,SM_SGM');
+    });
+
+    // Observation resolution actions (standalone, not nested under visit)
+    Route::prefix('observations/{observation}')->name('observations.')->group(function () {
+        Route::post('mark-pending',   [ObservationController::class, 'markPendingResolved'])->name('mark-pending');
+        Route::post('resolve',        [ObservationController::class, 'resolve'])->name('resolve');
+        Route::post('approve-pending',[ObservationController::class, 'approvePending'])->name('approve-pending');
+        Route::post('reopen',         [ObservationController::class, 'reopen'])->name('reopen');
+
+        // Comments per observation
+        Route::prefix('comments')->name('comments.')->group(function () {
+            Route::post('/',               [ObservationCommentController::class, 'store'])->name('store');
+            Route::post('{comment}',       [ObservationCommentController::class, 'update'])->name('update');
+            Route::delete('{comment}',     [ObservationCommentController::class, 'destroy'])->name('destroy');
+            Route::get('my-draft',         [ObservationCommentController::class, 'getMyDraft'])->name('my-draft');
+        });
+    });
 
     // PO Assignment admin
     Route::get('/admin/po-assignments', [\App\Http\Controllers\PoAssignmentController::class, 'index'])->name('admin.po-assignments.index');
