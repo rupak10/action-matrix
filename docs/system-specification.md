@@ -1028,7 +1028,16 @@ GET    /api/v1/files/{fileType}/{fileId}  — Download/view a file (authenticate
 │   ├── src/main/resources/
 │   │   ├── application.yml
 │   │   ├── application-dev.yml
-│   │   └── application-prod.yml
+│   │   ├── application-prod.yml
+│   │   └── db/migration/             — Flyway SQL migration files
+│   │       ├── V1__create_users_and_roles.sql
+│   │       ├── V2__create_user_assignments.sql
+│   │       ├── V3__create_acm_visits.sql
+│   │       ├── V4__create_acm_observations.sql
+│   │       ├── V5__create_acm_comments.sql
+│   │       ├── V6__create_acm_movements_and_remarks.sql
+│   │       ├── V7__create_notifications.sql
+│   │       └── V8__seed_roles.sql
 │   └── Dockerfile
 │
 ├── frontend/                   — Next.js application
@@ -1182,6 +1191,81 @@ volumes:
   postgres_data:
   file_storage:
 ```
+
+### 8.7 Database Migrations (Flyway)
+
+Database schema is managed by **Flyway**. There is no manual migration command — Flyway runs automatically when the Spring Boot application starts and applies any pending migration files.
+
+#### Setup
+
+Add to `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.flywaydb</groupId>
+    <artifactId>flyway-core</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.flywaydb</groupId>
+    <artifactId>flyway-database-postgresql</artifactId>
+</dependency>
+```
+
+Configure in `application.yml`:
+
+```yaml
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+  jpa:
+    hibernate:
+      ddl-auto: validate   # Hibernate validates schema only — never creates/alters tables
+```
+
+#### File Naming Convention
+
+```
+V{version}__{description}.sql
+```
+
+- `V` prefix is required (uppercase)
+- `{version}` is a number: `1`, `2`, `3` ... or `1.1`, `1.2` for sub-versions
+- Double underscore `__` separates version from description
+- Description uses underscores (no spaces)
+
+Examples:
+```
+V1__create_users_and_roles.sql
+V2__create_user_assignments.sql
+V3__create_acm_visits.sql
+V4__create_acm_observations.sql
+V5__create_acm_comments.sql
+V6__create_acm_movements_and_remarks.sql
+V7__create_notifications.sql
+V8__seed_roles.sql
+```
+
+#### Rules
+
+- **Never edit a migration file after it has been applied.** Flyway checksums each file — modifying it will cause a startup error.
+- To change the schema, always create a **new migration file** with the next version number.
+- Migration files are plain PostgreSQL SQL — use the same syntax as the schema definitions in Section 6.
+- `V8__seed_roles.sql` (and similar seed files) use `INSERT ... ON CONFLICT DO NOTHING` so they are safe to run on a fresh database without failing.
+
+#### Recommended Migration File Order
+
+| File | Contents |
+|---|---|
+| `V1__create_users_and_roles.sql` | `users`, `roles`, `user_roles` |
+| `V2__create_user_assignments.sql` | `user_supervisors_pksf`, `user_supervisors_po`, `user_po_assignments_pksf`, `user_po_assignments_po` |
+| `V3__create_acm_visits.sql` | `acm_visit_tracker`, `acm_visits`, `acm_visit_movements`, `acm_visit_remarks`, `acm_visit_remark_attachments` |
+| `V4__create_acm_observations.sql` | `acm_observations`, `acm_observation_attachments` |
+| `V5__create_acm_comments.sql` | `acm_observation_comments`, `acm_observation_comment_attachments`, `acm_sm_comments` |
+| `V6__create_notifications.sql` | `notifications` |
+| `V7__create_audit_logs.sql` | `audit_logs` |
+| `V8__seed_roles.sql` | Insert the 9 system roles |
 
 ---
 
