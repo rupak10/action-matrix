@@ -26,19 +26,19 @@
             'label' => 'Application',
             'groups' => [
                 [
-                    'title' => 'Action Matrix',
-                    'icon' => 'bi-grid-3x3-gap',
+                    'title' => 'Visits',
+                    'icon'  => 'bi-clipboard2-check',
                     'children' => [
                         [
-                            'label' => 'Follow-up List',
-                            'route' => 'action-matrix.index',
-                            'active' => request()->routeIs('action-matrix.index'),
+                            'label'  => 'All Visits',
+                            'route'  => 'visits.index',
+                            'active' => request()->routeIs('visits.index') || request()->routeIs('visits.show'),
                         ],
                         [
-                            'label'  => 'New Follow-up',
-                            'route'  => 'action-matrix.create',
-                            'active' => request()->routeIs('action-matrix.create'),
-                            'roles'  => ['PKSF_CO', 'Admin', 'Super_Admin'],
+                            'label'     => 'New Visit',
+                            'route'     => 'visits.create',
+                            'active'    => request()->routeIs('visits.create'),
+                            'pksf_only' => true,
                         ],
                     ],
                 ],

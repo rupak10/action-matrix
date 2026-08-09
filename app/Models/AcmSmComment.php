@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class AcmSmComment extends Model
 {
-    protected $fillable = ['acm_id', 'emp_id', 'comment', 'attachments'];
+    protected $table = 'acm_sm_comments';
 
-    protected $casts = [
-        'attachments' => 'array',
-    ];
+    protected $fillable = ['visit_id', 'emp_id', 'comment'];
+
+    public function visit()
+    {
+        return $this->belongsTo(Visit::class, 'visit_id');
+    }
 
     public function commenter()
     {

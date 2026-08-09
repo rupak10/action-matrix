@@ -16,10 +16,18 @@ class ReportController extends Controller
     {
         $this->authorizeReport();
 
-        $matrices = DB::table('acm_master as m')
-            ->select('m.po_code', 'm.visiting_date', 'm.observation_category', 'm.priority', 'm.status', 'm.updated_at')
-            ->where('m.status', 'CLOSED')
-            ->orderBy('m.visiting_date')
+        $matrices = DB::table('acm_observations as o')
+            ->join('acm_visits as v', 'v.id', '=', 'o.visit_id')
+            ->select(
+                'v.po_code',
+                'v.visit_from_date as visiting_date',
+                'o.observation_category',
+                'o.priority',
+                'o.resolution_status as status',
+                'o.updated_at'
+            )
+            ->where('o.resolution_status', 'RESOLVED')
+            ->orderBy('v.visit_from_date')
             ->get();
 
         return $this->streamPdf(
@@ -34,7 +42,7 @@ class ReportController extends Controller
     {
         $this->authorizeReport();
 
-        $poList     = DB::table('acm_master')->distinct()->orderBy('po_code')->pluck('po_code');
+        $poList     = DB::table('acm_visits')->distinct()->orderBy('po_code')->pluck('po_code');
         $categories = self::CATEGORIES;
 
         return view('reports.action_matrix_filter', compact('poList', 'categories'));
@@ -44,19 +52,27 @@ class ReportController extends Controller
     {
         $this->authorizeReport();
 
-        $query = DB::table('acm_master')
-            ->select('po_code', 'visiting_date', 'observation_category', 'priority', 'status', 'updated_at')
-            ->where('status', 'CLOSED');
+        $query = DB::table('acm_observations as o')
+            ->join('acm_visits as v', 'v.id', '=', 'o.visit_id')
+            ->select(
+                'v.po_code',
+                'v.visit_from_date as visiting_date',
+                'o.observation_category',
+                'o.priority',
+                'o.resolution_status as status',
+                'o.updated_at'
+            )
+            ->where('o.resolution_status', 'RESOLVED');
 
         if ($request->filled('po_code')) {
-            $query->where('po_code', $request->po_code);
+            $query->where('v.po_code', $request->po_code);
         }
 
         if ($request->filled('category')) {
-            $query->where('observation_category', $request->category);
+            $query->where('o.observation_category', $request->category);
         }
 
-        $matrices = $query->orderBy('visiting_date')->get();
+        $matrices = $query->orderBy('v.visit_from_date')->get();
 
         return $this->streamPdf(
             view:     'reports.report_action_matrix',

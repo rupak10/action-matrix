@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable(['name', 'email', 'password', 'emp_id', 'emp_type', 'designation', 'dept_id', 'dept_name', 'unit_id', 'unit_name', 'po_code'])]
 #[Hidden(['password', 'remember_token'])]
@@ -96,5 +97,22 @@ class User extends Authenticatable
     public function poAssignments()
     {
         return $this->hasMany(UserPoAssignment::class, 'emp_id', 'emp_id');
+    }
+
+    public function createdVisits()
+    {
+        return $this->hasMany(Visit::class, 'created_by', 'emp_id');
+    }
+
+    public function deskVisits()
+    {
+        return $this->hasMany(Visit::class, 'current_desk_emp_id', 'emp_id');
+    }
+
+    public function isSupervisor(): bool
+    {
+        return \Illuminate\Support\Facades\DB::table('user_supervisors')
+            ->where('supervisor_emp_id', $this->emp_id)
+            ->exists();
     }
 }

@@ -1,461 +1,464 @@
 @extends('layouts.app')
 
-@section('title', 'Analytics Dashboard')
+@section('title', 'Analytics')
 
 @push('styles')
 <style>
-/* ── Page header ───────────────────────────────────────────────────── */
-.analytics-header {
-    background: linear-gradient(135deg, #1a237e 0%, #283593 40%, #1565c0 100%);
-    border-radius: 16px;
-    padding: 2rem 2.5rem;
-    margin-bottom: 1.75rem;
-    color: #fff;
-    position: relative;
-    overflow: hidden;
-}
-.analytics-header::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
-    width: 220px; height: 220px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.06);
-}
-.analytics-header::after {
-    content: '';
-    position: absolute;
-    bottom: -80px; left: -40px;
-    width: 280px; height: 280px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.04);
-}
-.analytics-header h4 { font-size: 1.6rem; font-weight: 700; margin: 0 0 .25rem; }
-.analytics-header p  { opacity: .75; margin: 0; font-size: .9rem; }
-
-/* ── Filter bar ────────────────────────────────────────────────────── */
-.filter-bar {
+/* ── KPI cards ─────────────────────────────────────────────────────────── */
+.kpi-card {
     background: #fff;
+    border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 1rem 1.5rem;
-    margin-bottom: 1.75rem;
-    box-shadow: 0 1px 6px rgba(0,0,0,.06);
-    display: flex;
-    flex-wrap: wrap;
-    gap: .75rem;
-    align-items: center;
+    padding: 1.2rem 1.4rem;
+    height: 100%;
+    transition: box-shadow .15s, border-color .15s;
 }
-.filter-bar label { font-size: .8rem; font-weight: 600; color: #546e7a; margin-bottom: .2rem; }
-.filter-bar select { font-size: .875rem; border-radius: 8px; border-color: #dee2e6; padding: .45rem .75rem; }
+.kpi-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.07); border-color: #cbd5e1; }
+.kpi-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.kpi-label { font-size: .7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
+.kpi-value { font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1; margin: .6rem 0 .2rem; }
+.kpi-sub   { font-size: .71rem; color: #94a3b8; }
 
-/* ── Stat cards ────────────────────────────────────────────────────── */
-.stat-card {
-    border-radius: 14px;
-    padding: 1.5rem 1.75rem;
-    color: #fff;
-    position: relative;
+/* ── Chart panels ──────────────────────────────────────────────────────── */
+.chart-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    height: 100%;
+}
+.chart-panel-title {
+    font-size: .78rem; font-weight: 700; color: #374151;
+    display: flex; align-items: center; gap: .4rem;
+    margin-bottom: 1rem;
+}
+.chart-panel-title i { color: #94a3b8; font-size: .85rem; }
+.chart-panel-subtitle { font-size: .7rem; font-weight: 400; color: #94a3b8; margin-left: .25rem; }
+.chart-empty {
+    display: none; position: absolute; inset: 0;
+    align-items: center; justify-content: center; flex-direction: column;
+    color: #cbd5e1;
+}
+.chart-empty i { font-size: 2rem; margin-bottom: .4rem; }
+.chart-empty span { font-size: .78rem; }
+
+/* ── Filter bar ────────────────────────────────────────────────────────── */
+.ana-filter-bar {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: .875rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex; flex-wrap: wrap; gap: .75rem; align-items: center;
+}
+.period-btn {
+    padding: .3rem .75rem; border-radius: 6px;
+    border: 1px solid #e2e8f0; background: #fff;
+    font-size: .78rem; font-weight: 600; color: #64748b;
+    cursor: pointer; transition: all .12s; white-space: nowrap;
+}
+.period-btn:hover:not(.active) { background: #f8fafc; border-color: #cbd5e1; color: #374151; }
+.period-btn.active { background: var(--sl-primary); color: #fff; border-color: var(--sl-primary); }
+
+/* ── Table panels ──────────────────────────────────────────────────────── */
+.table-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     overflow: hidden;
-    transition: transform .2s, box-shadow .2s;
-    cursor: default;
+    height: 100%;
 }
-.stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,.18); }
-.stat-card::after {
-    content: '';
-    position: absolute;
-    bottom: -30px; right: -30px;
-    width: 110px; height: 110px;
-    border-radius: 50%;
-    background: rgba(255,255,255,.12);
+.table-panel-header {
+    padding: .9rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: .78rem; font-weight: 700; color: #374151;
+    display: flex; align-items: center; gap: .4rem;
 }
-.stat-card .stat-icon {
-    font-size: 2.2rem;
-    opacity: .85;
-    margin-bottom: .75rem;
-}
-.stat-card .stat-value {
-    font-size: 2.4rem;
-    font-weight: 800;
-    line-height: 1;
-    margin-bottom: .3rem;
-}
-.stat-card .stat-label {
-    font-size: .8rem;
-    font-weight: 600;
-    opacity: .85;
+.table-panel-header i { color: #94a3b8; }
+.ana-table thead th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: .7rem;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .05em;
-}
-.stat-card .stat-sub {
-    font-size: .75rem;
-    opacity: .7;
-    margin-top: .25rem;
-}
-
-.sc-total    { background: linear-gradient(135deg, #1565c0, #1976d2); }
-.sc-open     { background: linear-gradient(135deg, #e65100, #f57c00); }
-.sc-closed   { background: linear-gradient(135deg, #1b5e20, #2e7d32); }
-.sc-action   { background: linear-gradient(135deg, #880e4f, #ad1457); }
-.sc-avgdays  { background: linear-gradient(135deg, #4a148c, #6a1b9a); }
-
-/* ── Section headers ───────────────────────────────────────────────── */
-.section-heading {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #1a237e;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-}
-.section-heading::after {
-    content: '';
-    flex: 1;
-    height: 2px;
-    background: linear-gradient(90deg, #1a237e22, transparent);
-    border-radius: 2px;
-}
-
-/* ── Chart cards ───────────────────────────────────────────────────── */
-.chart-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 1.5rem;
-    box-shadow: 0 1px 6px rgba(0,0,0,.06);
-    height: 100%;
-}
-.chart-card .chart-title {
-    font-size: .875rem;
-    font-weight: 700;
-    color: #37474f;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-}
-.chart-card .chart-title i { color: #1565c0; }
-
-/* ── Table cards ───────────────────────────────────────────────────── */
-.table-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 1.5rem;
-    box-shadow: 0 1px 6px rgba(0,0,0,.06);
-}
-.table-card table thead th {
-    background: #1a237e;
-    color: #fff;
-    font-size: .8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    border: none;
-    padding: .65rem .75rem;
-}
-.table-card table tbody td {
-    font-size: .85rem;
-    vertical-align: middle;
-    border-color: #f0f4f8;
-    padding: .6rem .75rem;
-}
-.table-card table tbody tr:hover td { background: #f5f7ff; }
-
-/* ── Status badges ─────────────────────────────────────────────────── */
-.badge-status {
-    font-size: .7rem;
-    padding: .3em .65em;
-    border-radius: 6px;
-    font-weight: 600;
+    border-bottom: 1px solid #e2e8f0 !important;
+    border-top: none !important;
+    padding: .55rem .85rem;
     white-space: nowrap;
 }
-.bs-SAVED               { background: #e3f2fd; color: #0d47a1; }
-.bs-SUBMITTED           { background: #fff3e0; color: #bf360c; }
-.bs-REJECTED            { background: #fce4ec; color: #880e4f; }
-.bs-PO_REVIEW           { background: #e8eaf6; color: #283593; }
-.bs-PO_SUBMITTED        { background: #e0f2f1; color: #004d40; }
-.bs-PO_APPROVED         { background: #e8f5e9; color: #1b5e20; }
-.bs-PO_REJECTED         { background: #fff8e1; color: #e65100; }
-.bs-WAITING_FOR_CLOSURE { background: #fce4ec; color: #880e4f; }
-.bs-REVISION_REQUESTED  { background: #f3e5f5; color: #4a148c; }
-.bs-PKSF_REJECTED       { background: #ffebee; color: #b71c1c; }
-.bs-CLOSED              { background: #e8f5e9; color: #1b5e20; }
-
-/* ── Priority pill ─────────────────────────────────────────────────── */
-.badge-priority { font-size: .7rem; padding: .3em .65em; border-radius: 20px; font-weight: 700; }
-.bp-HIGH   { background: #ffebee; color: #c62828; }
-.bp-MEDIUM { background: #fff8e1; color: #ef6c00; }
-.bp-LOW    { background: #e8f5e9; color: #2e7d32; }
-
-/* ── Days pending indicator ────────────────────────────────────────── */
-.days-bar {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
+.ana-table tbody td {
+    font-size: .83rem; vertical-align: middle;
+    border-color: #f8fafc; padding: .55rem .85rem; color: #374151;
 }
-.days-bar-fill {
-    height: 6px;
-    border-radius: 3px;
-    flex: 1;
-    background: #e9ecef;
-    overflow: hidden;
-}
-.days-bar-fill span {
-    display: block;
-    height: 100%;
-    border-radius: 3px;
-    background: linear-gradient(90deg, #1565c0, #e53935);
-    transition: width .4s ease;
-}
-.days-num { font-size: .75rem; font-weight: 700; color: #546e7a; white-space: nowrap; }
+.ana-table tbody tr:hover td { background: #fafbfc; }
 
-/* ── Loading overlay ───────────────────────────────────────────────── */
+/* ── Status badges ─────────────────────────────────────────────────────── */
+.vbadge { font-size: .68rem; padding: .25em .6em; border-radius: 5px; font-weight: 600; white-space: nowrap; }
+.vb-SAVED        { background: #f1f5f9; color: #475569; }
+.vb-SUBMITTED    { background: #eff6ff; color: #1d4ed8; }
+.vb-REJECTED     { background: #fff1f2; color: #be123c; }
+.vb-PO_SO_REVIEW { background: #fffbeb; color: #b45309; }
+.vb-PO_REVIEW    { background: #f5f3ff; color: #6d28d9; }
+.vb-PO_SUBMITTED { background: #ecfeff; color: #0e7490; }
+.vb-PO_APPROVED  { background: #f0fdf4; color: #15803d; }
+
+/* ── Days bar ──────────────────────────────────────────────────────────── */
+.days-bar { display: flex; align-items: center; gap: .5rem; min-width: 100px; }
+.days-bar-track { flex: 1; height: 5px; border-radius: 3px; background: #e2e8f0; overflow: hidden; }
+.days-bar-fill  { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--sl-primary), #d97706); }
+.days-num { font-size: .73rem; font-weight: 700; color: #64748b; white-space: nowrap; }
+
+/* ── Section label ─────────────────────────────────────────────────────── */
+.section-label {
+    font-size: .68rem; font-weight: 700; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: .07em;
+    margin-bottom: .75rem;
+}
+
+/* ── Loading overlay ───────────────────────────────────────────────────── */
 #loadingOverlay {
     position: fixed; inset: 0; z-index: 9999;
-    background: rgba(255,255,255,.55);
+    background: rgba(255,255,255,.55) backdrop-filter: blur(2px);
     display: flex; align-items: center; justify-content: center;
     opacity: 0; pointer-events: none; transition: opacity .2s;
 }
 #loadingOverlay.active { opacity: 1; pointer-events: all; }
-#loadingOverlay .spinner-wrapper {
-    background: #fff; border-radius: 16px; padding: 2rem 2.5rem;
-    text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,.15);
+#loadingOverlay .spinner-wrap {
+    background: #fff; border-radius: 12px; padding: 1.5rem 2rem;
+    text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,.12);
+    border: 1px solid #e2e8f0;
 }
-#loadingOverlay .spinner-border { width: 2.5rem; height: 2.5rem; color: #1565c0; }
-#loadingOverlay p { margin: .75rem 0 0; font-size: .875rem; color: #546e7a; font-weight: 500; }
+#loadingOverlay p { margin: .6rem 0 0; font-size: .82rem; color: #64748b; }
 
-/* ── Responsive tweaks ─────────────────────────────────────────────── */
-@media (max-width: 768px) {
-    .analytics-header { padding: 1.25rem 1.5rem; }
-    .analytics-header h4 { font-size: 1.25rem; }
-    .stat-card .stat-value { font-size: 2rem; }
+@media (max-width: 576px) {
+    .kpi-value { font-size: 1.6rem; }
+    .chart-panel { padding: 1rem 1rem; }
 }
 </style>
 @endpush
 
 @section('content')
 
-{{-- Loading overlay --}}
 <div id="loadingOverlay">
-    <div class="spinner-wrapper">
-        <div class="spinner-border" role="status"></div>
-        <p>Refreshing analytics…</p>
+    <div class="spinner-wrap">
+        <div class="spinner-border spinner-border-sm" role="status" style="color:var(--sl-primary);width:1.6rem;height:1.6rem"></div>
+        <p>Updating…</p>
     </div>
 </div>
 
 <div class="container-fluid">
 
-    {{-- ── Page header ─────────────────────────────────────────────── --}}
-    {{-- <div class="analytics-header">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div>
-                <h4><i class="bi bi-bar-chart-line me-2"></i>Analytics Dashboard</h4>
-                <p>Real-time overview of the PKSF Action Matrix system</p>
-            </div>
-            <div class="text-end">
-                <div style="font-size:.8rem;opacity:.7;">Last refreshed</div>
-                <div id="refreshedAt" style="font-size:.9rem;font-weight:600;">{{ now()->format('d M Y, h:i A') }}</div>
+    {{-- ── Page title ──────────────────────────────────────────────────── --}}
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+            <h5 style="font-weight:700;color:#0f172a;margin:0;font-size:1.05rem">Analytics</h5>
+            <div style="font-size:.74rem;color:#94a3b8;margin-top:.15rem">
+                @if($currentUser->hasAnyRole(['SM_MD', 'Super_Admin', 'Admin']))
+                    All POs
+                @elseif($currentUser->isPo())
+                    {{ $currentUser->po_code }}
+                @else
+                    {{ count($poList) }} assigned PO{{ count($poList) !== 1 ? 's' : '' }}
+                @endif
+                &nbsp;&bull;&nbsp; as of {{ now()->format('d M Y, h:i A') }}
             </div>
         </div>
-    </div> --}}
+    </div>
 
-    {{-- ── Filter bar ──────────────────────────────────────────────── --}}
-    <div class="filter-bar">
-        <i class="bi bi-funnel text-primary me-1" style="font-size:1.1rem;"></i>
-        <strong style="font-size:.875rem;color:#37474f;margin-right:.25rem;">Filters:</strong>
-
-        {{-- Period --}}
-        <div>
-            <label for="filterPeriod">Period</label>
-            <select id="filterPeriod" class="form-select form-select-sm">
-                <option value="1month"  {{ $selectedPeriod === '1month'  ? 'selected' : '' }}>Last Month</option>
-                <option value="3months" {{ $selectedPeriod === '3months' ? 'selected' : '' }}>Last 3 Months</option>
-                <option value="6months" {{ $selectedPeriod === '6months' ? 'selected' : '' }}>Last 6 Months</option>
-                <option value="1year"   {{ $selectedPeriod === '1year'   ? 'selected' : '' }}>Last Year</option>
-                <option value="all"     {{ $selectedPeriod === 'all'     ? 'selected' : '' }}>All Time</option>
-            </select>
+    {{-- ── Filter bar ──────────────────────────────────────────────────── --}}
+    <div class="ana-filter-bar">
+        <span style="font-size:.75rem;font-weight:600;color:#64748b;white-space:nowrap">Period:</span>
+        <div class="d-flex gap-1 flex-wrap">
+            @foreach(['1month'=>'1M','3months'=>'3M','6months'=>'6M','1year'=>'1Y','all'=>'All'] as $val=>$lbl)
+            <button class="period-btn {{ $selectedPeriod === $val ? 'active' : '' }}" data-period="{{ $val }}">{{ $lbl }}</button>
+            @endforeach
         </div>
 
-        @if($showPoChart)
-        {{-- PO Code — Admin / PKSF only --}}
-        <div>
-            <label for="filterPo">PO Code</label>
-            <select id="filterPo" class="form-select form-select-sm" style="min-width:160px;">
+        @if($showPoPanel && count($poList))
+        <div class="d-flex align-items-center gap-2 ms-2" style="border-left:1px solid #e2e8f0;padding-left:.85rem">
+            <span style="font-size:.75rem;font-weight:600;color:#64748b;white-space:nowrap">PO:</span>
+            <select id="filterPo" class="form-select form-select-sm" style="min-width:160px;font-size:.8rem;border-radius:7px;border-color:#e2e8f0">
                 <option value="">All POs</option>
                 @foreach($poList as $po)
-                    <option value="{{ $po }}" {{ $selectedPo === $po ? 'selected' : '' }}>{{ $po }}</option>
+                <option value="{{ $po }}" {{ $selectedPo === $po ? 'selected' : '' }}>{{ $po }}</option>
                 @endforeach
             </select>
         </div>
         @endif
 
-        <button id="btnRefresh" class="btn btn-primary btn-sm ms-auto" style="border-radius:8px;">
-            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-        </button>
-        <button id="btnClearFilters" class="btn btn-outline-secondary btn-sm" style="border-radius:8px;">
+        <button id="btnClear" class="btn btn-sm ms-auto" style="border-radius:7px;font-size:.78rem;font-weight:600;color:#64748b;border:1px solid #e2e8f0;background:#fff;padding:.3rem .75rem">
             <i class="bi bi-x-circle me-1"></i>Clear
         </button>
     </div>
 
-    {{-- ── Stat cards ──────────────────────────────────────────────── --}}
+    {{-- ── KPI Cards — Row 1 ───────────────────────────────────────────── --}}
+    <div class="section-label">Overview</div>
+    <div class="row g-3 mb-2">
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#f1f5f9">
+                        <i class="bi bi-grid-3x3-gap" style="color:#64748b"></i>
+                    </div>
+                    <span class="kpi-label">Total Visits</span>
+                </div>
+                <div class="kpi-value" id="statTotal">{{ $stats['total'] }}</div>
+                <div class="kpi-sub">All visits in scope</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#fffbeb">
+                        <i class="bi bi-hourglass-split" style="color:#d97706"></i>
+                    </div>
+                    <span class="kpi-label">Open</span>
+                </div>
+                <div class="kpi-value" id="statOpen">{{ $stats['open'] }}</div>
+                <div class="kpi-sub">Active / in-progress</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#f0fdf4">
+                        <i class="bi bi-check-circle" style="color:#16a34a"></i>
+                    </div>
+                    <span class="kpi-label">Completed</span>
+                </div>
+                <div class="kpi-value" id="statCompleted">{{ $stats['completed'] }}</div>
+                <div class="kpi-sub">PO Approved</div>
+            </div>
+        </div>
+        @if(!$currentUser->isPo())
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#eef2ff">
+                        <i class="bi bi-inbox" style="color:#4f46e5"></i>
+                    </div>
+                    <span class="kpi-label">On My Desk</span>
+                </div>
+                <div class="kpi-value" id="statMyDesk">{{ $stats['on_my_desk'] ?? 0 }}</div>
+                <div class="kpi-sub">Awaiting your action</div>
+            </div>
+        </div>
+        @else
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#fffbeb">
+                        <i class="bi bi-hourglass-split" style="color:#d97706"></i>
+                    </div>
+                    <span class="kpi-label">Pending Review</span>
+                </div>
+                <div class="kpi-value" id="statObsPending">{{ $stats['obs_pending'] }}</div>
+                <div class="kpi-sub">Awaiting PKSF confirmation</div>
+            </div>
+        </div>
+        @endif
+    </div>
+
+    {{-- ── KPI Cards — Row 2 ───────────────────────────────────────────── --}}
     <div class="row g-3 mb-4">
-        <div class="col-6 col-sm-6 col-lg">
-            <div class="stat-card sc-total">
-                <div class="stat-icon"><i class="bi bi-grid-3x3-gap-fill"></i></div>
-                <div class="stat-value" id="statTotal">{{ $stats['total'] }}</div>
-                <div class="stat-label">Total Matrices</div>
-                <div class="stat-sub">All time in scope</div>
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#eff6ff">
+                        <i class="bi bi-eye" style="color:#2563eb"></i>
+                    </div>
+                    <span class="kpi-label">Total Observations</span>
+                </div>
+                <div class="kpi-value" id="statObsTotal">{{ $stats['obs_total'] }}</div>
+                <div class="kpi-sub">Across all visits</div>
             </div>
         </div>
-        <div class="col-6 col-sm-6 col-lg">
-            <div class="stat-card sc-open">
-                <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-                <div class="stat-value" id="statOpen">{{ $stats['open'] }}</div>
-                <div class="stat-label">Open</div>
-                <div class="stat-sub">Active / In-progress</div>
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#ecfeff">
+                        <i class="bi bi-check2-all" style="color:#0891b2"></i>
+                    </div>
+                    <span class="kpi-label">Resolved Obs</span>
+                </div>
+                <div class="kpi-value" id="statObsResolved">{{ $stats['obs_resolved'] }}</div>
+                <div class="kpi-sub">Resolution confirmed</div>
             </div>
         </div>
-        <div class="col-6 col-sm-6 col-lg">
-            <div class="stat-card sc-closed">
-                <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
-                <div class="stat-value" id="statClosed">{{ $stats['closed'] }}</div>
-                <div class="stat-label">Closed</div>
-                <div class="stat-sub">Successfully resolved</div>
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#f5f3ff">
+                        <i class="bi bi-lightning" style="color:#7c3aed"></i>
+                    </div>
+                    <span class="kpi-label">Action Matrix</span>
+                </div>
+                <div class="kpi-value" id="statActionMatrix">{{ $stats['action_matrix'] }}</div>
+                <div class="kpi-sub">Obs requiring action plan</div>
             </div>
         </div>
-        <div class="col-6 col-sm-6 col-lg">
-            <div class="stat-card sc-action">
-                <div class="stat-icon"><i class="bi bi-bell-fill"></i></div>
-                <div class="stat-value" id="statAction">{{ $stats['action_required'] }}</div>
-                <div class="stat-label">Action Required</div>
-                <div class="stat-sub">Awaiting your desk</div>
-            </div>
-        </div>
-        <div class="col-6 col-sm-6 col-lg">
-            <div class="stat-card sc-avgdays">
-                <div class="stat-icon"><i class="bi bi-calendar-event"></i></div>
-                <div class="stat-value" id="statAvg">{{ $stats['avg_days'] }}</div>
-                <div class="stat-label">Avg Days to Response</div>
-                <div class="stat-sub">Creation → first comment</div>
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background:#fff7ed">
+                        <i class="bi bi-calendar2-check" style="color:#ea580c"></i>
+                    </div>
+                    <span class="kpi-label">Avg Days to Complete</span>
+                </div>
+                <div class="kpi-value" id="statAvgDays">{{ $stats['avg_days'] }}</div>
+                <div class="kpi-sub">For completed visits</div>
             </div>
         </div>
     </div>
 
-    {{-- ── Row 1: Status donut + Priority bar ─────────────────────── --}}
-    <div class="row g-3 mb-4">
-        {{-- Status donut --}}
+    {{-- ── Charts Row 1: Status + Obs Resolution + Priority ───────────── --}}
+    <div class="section-label">Distributions</div>
+    <div class="row g-3 mb-3">
+
+        {{-- Visit Status --}}
         <div class="col-12 col-lg-5">
-            <div class="chart-card">
-                <div class="chart-title">
-                    <i class="bi bi-pie-chart-fill"></i> Status Distribution
+            <div class="chart-panel">
+                <div class="chart-panel-title">
+                    <i class="bi bi-pie-chart-fill"></i> Visit Status
                 </div>
-                <div style="position:relative;height:280px;">
+                <div style="position:relative;height:240px">
                     <canvas id="chartStatus"></canvas>
+                    <div class="chart-empty" id="emptyStatus">
+                        <i class="bi bi-pie-chart"></i><span>No data</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        {{-- Priority bar --}}
-        <div class="col-12 col-lg-3">
-            <div class="chart-card">
-                <div class="chart-title">
-                    <i class="bi bi-bar-chart-fill"></i> Priority Breakdown
-                </div>
-                <div style="position:relative;height:280px;">
-                    <canvas id="chartPriority"></canvas>
-                </div>
-            </div>
-        </div>
-
-        {{-- Category bar --}}
+        {{-- Observation Resolution --}}
         <div class="col-12 col-lg-4">
-            <div class="chart-card">
-                <div class="chart-title">
-                    <i class="bi bi-tags-fill"></i> Observation Category
+            <div class="chart-panel">
+                <div class="chart-panel-title">
+                    <i class="bi bi-circle-half"></i> Observation Resolution
                 </div>
-                <div style="position:relative;height:280px;">
+                <div style="position:relative;height:240px">
+                    <canvas id="chartObsRes"></canvas>
+                    <div class="chart-empty" id="emptyObsRes">
+                        <i class="bi bi-circle-half"></i><span>No data</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Priority --}}
+        <div class="col-12 col-lg-3">
+            <div class="chart-panel">
+                <div class="chart-panel-title">
+                    <i class="bi bi-bar-chart-fill"></i> By Priority
+                </div>
+                <div style="position:relative;height:240px">
+                    <canvas id="chartPriority"></canvas>
+                    <div class="chart-empty" id="emptyPriority">
+                        <i class="bi bi-bar-chart"></i><span>No data</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {{-- ── Charts Row 2: Category + Monthly Trend ──────────────────────── --}}
+    <div class="row g-3 mb-3">
+
+        {{-- Category --}}
+        <div class="col-12 col-lg-5">
+            <div class="chart-panel">
+                <div class="chart-panel-title">
+                    <i class="bi bi-tags-fill"></i> By Category
+                </div>
+                <div style="position:relative;height:240px">
                     <canvas id="chartCategory"></canvas>
+                    <div class="chart-empty" id="emptyCategory">
+                        <i class="bi bi-tags"></i><span>No data</span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    {{-- ── Row 2: Monthly trend (full width) ──────────────────────── --}}
-    <div class="row g-3 mb-4">
-        <div class="col-12">
-            <div class="chart-card">
-                <div class="chart-title">
-                    <i class="bi bi-graph-up-arrow"></i> Monthly Creation Trend
-                    <span style="font-size:.75rem;font-weight:400;color:#90a4ae;margin-left:.5rem;">(Always last 12 months)</span>
+        {{-- Monthly Trend --}}
+        <div class="col-12 col-lg-7">
+            <div class="chart-panel">
+                <div class="chart-panel-title">
+                    <i class="bi bi-graph-up-arrow"></i> Monthly Trend
+                    <span class="chart-panel-subtitle">(Last 12 months)</span>
                 </div>
-                <div style="position:relative;height:230px;">
+                <div style="position:relative;height:240px">
                     <canvas id="chartMonthly"></canvas>
+                    <div class="chart-empty" id="emptyMonthly">
+                        <i class="bi bi-graph-up"></i><span>No data</span>
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
 
-    @if($showPoChart)
-    {{-- ── Row 3: PO Chart (Admin / PKSF only) ────────────────────── --}}
-    <div class="row g-3 mb-4" id="poChartRow">
+    {{-- ── PO Comparison (PKSF / SM only) ──────────────────────────────── --}}
+    @if($showPoPanel)
+    <div class="section-label mt-1">PO Comparison</div>
+    <div class="row g-3 mb-3">
         <div class="col-12">
-            <div class="chart-card">
-                <div class="chart-title">
-                    <i class="bi bi-buildings-fill"></i> Matrices by PO Code
-                    <span style="font-size:.75rem;font-weight:400;color:#90a4ae;margin-left:.5rem;">(Top 10)</span>
+            <div class="chart-panel">
+                <div class="chart-panel-title">
+                    <i class="bi bi-buildings-fill"></i> Open vs Resolved Observations by PO
+                    <span class="chart-panel-subtitle">(Top 12 by total observations)</span>
                 </div>
-                <div style="position:relative;height:260px;">
-                    <canvas id="chartPo"></canvas>
+                <div id="poComparisonContainer" style="position:relative;height:280px">
+                    <canvas id="chartPoComparison"></canvas>
+                    <div class="chart-empty" id="emptyPoComparison">
+                        <i class="bi bi-buildings"></i><span>No data</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     @endif
 
-    {{-- ── Row 4: Recent matrices + Longest pending ────────────────── --}}
+    {{-- ── Tables ───────────────────────────────────────────────────────── --}}
+    <div class="section-label mt-1">Visit Lists</div>
     <div class="row g-3 mb-4">
-        {{-- Recent matrices --}}
+
+        {{-- Recent visits --}}
         <div class="col-12 col-xl-6">
-            <div class="table-card">
-                <div class="section-heading">
-                    <i class="bi bi-clock-history text-primary"></i> Recently Created (Top 8)
+            <div class="table-panel">
+                <div class="table-panel-header">
+                    <i class="bi bi-clock-history"></i> Recently Created
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0" id="tblRecent">
+                    <table class="table table-hover mb-0 ana-table" id="tblRecent">
                         <thead>
                             <tr>
-                                <th>ACM ID</th>
-                                <th>PO Code</th>
-                                <th>Priority</th>
+                                <th>Visit</th>
+                                <th>PO</th>
                                 <th>Status</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyRecent">
-                            @foreach($recentMatrices as $m)
+                            @foreach($recentVisits as $v)
                             <tr>
                                 <td>
-                                    <a href="{{ route('action-matrix.show', $m['acm_id']) }}"
-                                       class="text-decoration-none fw-semibold" style="color:#1565c0;">
-                                        {{ $m['acm_id'] }}
+                                    <a href="{{ route('visits.show', $v['id']) }}"
+                                       class="text-decoration-none fw-semibold" style="color:var(--sl-primary)">
+                                        {{ $v['visit_code'] }}
                                     </a>
                                 </td>
-                                <td>{{ $m['po_code'] }}</td>
-                                <td>
-                                    <span class="badge-priority bp-{{ $m['priority'] }}">
-                                        {{ $m['priority'] }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge-status bs-{{ $m['status_raw'] }}">
-                                        {{ $m['status'] }}
-                                    </span>
-                                </td>
-                                <td style="white-space:nowrap;font-size:.8rem;color:#78909c;">
-                                    {{ $m['created_at'] }}
-                                </td>
+                                <td style="color:#64748b">{{ $v['po_code'] }}</td>
+                                <td><span class="vbadge vb-{{ $v['status_raw'] }}">{{ $v['status'] }}</span></td>
+                                <td style="color:#94a3b8;font-size:.78rem;white-space:nowrap">{{ $v['created_at'] }}</td>
                             </tr>
                             @endforeach
-                            @if(empty($recentMatrices))
-                            <tr><td colspan="5" class="text-center text-muted py-4">No data available</td></tr>
+                            @if(empty($recentVisits))
+                            <tr><td colspan="4" class="text-center text-muted py-4" style="font-size:.82rem">No visits found</td></tr>
                             @endif
                         </tbody>
                     </table>
@@ -465,153 +468,143 @@
 
         {{-- Longest pending --}}
         <div class="col-12 col-xl-6">
-            <div class="table-card">
-                <div class="section-heading">
-                    <i class="bi bi-exclamation-triangle-fill text-warning"></i> Longest Pending (Top 8)
+            <div class="table-panel">
+                <div class="table-panel-header">
+                    <i class="bi bi-exclamation-triangle"></i> Longest Pending
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0" id="tblPending">
+                    <table class="table table-hover mb-0 ana-table" id="tblPending">
                         <thead>
                             <tr>
-                                <th>ACM ID</th>
-                                <th>PO Code</th>
-                                <th>Priority</th>
+                                <th>Visit</th>
+                                <th>PO</th>
                                 <th>Status</th>
-                                <th>Days Pending</th>
+                                <th>Age</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyPending">
                             @php $maxDays = collect($longestPending)->max('days_pending') ?: 1; @endphp
-                            @foreach($longestPending as $m)
+                            @foreach($longestPending as $v)
                             <tr>
                                 <td>
-                                    <a href="{{ route('action-matrix.show', $m['acm_id']) }}"
-                                       class="text-decoration-none fw-semibold" style="color:#1565c0;">
-                                        {{ $m['acm_id'] }}
+                                    <a href="{{ route('visits.show', $v['id']) }}"
+                                       class="text-decoration-none fw-semibold" style="color:var(--sl-primary)">
+                                        {{ $v['visit_code'] }}
                                     </a>
                                 </td>
-                                <td>{{ $m['po_code'] }}</td>
-                                <td>
-                                    <span class="badge-priority bp-{{ $m['priority'] }}">
-                                        {{ $m['priority'] }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge-status bs-{{ $m['status_raw'] }}">
-                                        {{ $m['status'] }}
-                                    </span>
-                                </td>
+                                <td style="color:#64748b">{{ $v['po_code'] }}</td>
+                                <td><span class="vbadge vb-{{ $v['status_raw'] }}">{{ $v['status'] }}</span></td>
                                 <td>
                                     <div class="days-bar">
-                                        <div class="days-bar-fill">
-                                            <span style="width:{{ min(100, round($m['days_pending']/$maxDays*100)) }}%"></span>
+                                        <div class="days-bar-track">
+                                            <div class="days-bar-fill" style="width:{{ min(100, round($v['days_pending']/$maxDays*100)) }}%"></div>
                                         </div>
-                                        <span class="days-num">{{ $m['days_pending'] }}d</span>
+                                        <span class="days-num">{{ $v['days_pending'] }}d</span>
                                     </div>
                                 </td>
                             </tr>
                             @endforeach
                             @if(empty($longestPending))
-                            <tr><td colspan="5" class="text-center text-muted py-4">No pending matrices</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted py-4" style="font-size:.82rem">No pending visits</td></tr>
                             @endif
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
+
     </div>
 
-</div><!-- /container-fluid -->
+</div>
 @endsection
 
 @php
-    $analyticsJson = [
-        'statusChart'    => $statusChart,
-        'priorityChart'  => $priorityChart,
-        'categoryChart'  => $categoryChart,
-        'monthlyChart'   => $monthlyChart,
-        'poChart'        => $poChart,
-        'recentMatrices' => $recentMatrices,
-        'longestPending' => $longestPending,
-        'stats'          => $stats,
-        'showPoChart'    => $showPoChart,
-    ];
+$analyticsJson = [
+    'stats'              => $stats,
+    'statusChart'        => $statusChart,
+    'obsResolutionChart' => $obsResolutionChart,
+    'priorityChart'      => $priorityChart,
+    'categoryChart'      => $categoryChart,
+    'monthlyChart'       => $monthlyChart,
+    'poComparisonChart'  => $poComparisonChart,
+    'recentVisits'       => $recentVisits,
+    'longestPending'     => $longestPending,
+    'showPoPanel'        => $showPoPanel,
+];
 @endphp
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-// ── Initial data from server ─────────────────────────────────────────────
-const ANALYTICS = @json($analyticsJson);
+const ANA      = @json($analyticsJson);
+const AJAX_URL = '{{ route("analytics.data") }}';
+const VISIT_URL= '{{ url("visits") }}';
 
-const AJAX_URL   = '{{ route("analytics.data") }}';
-const MATRIX_URL = '{{ url("action-matrix") }}';
+// ── Colour maps ──────────────────────────────────────────────────────────
+const STATUS_COLORS = {
+    SAVED:        '#94a3b8',
+    SUBMITTED:    '#2563eb',
+    REJECTED:     '#e11d48',
+    PO_SO_REVIEW: '#d97706',
+    PO_REVIEW:    '#7c3aed',
+    PO_SUBMITTED: '#0891b2',
+    PO_APPROVED:  '#16a34a',
+};
+const RESOLUTION_COLORS = {
+    OPEN:             '#2563eb',
+    PENDING_RESOLVED: '#d97706',
+    RESOLVED:         '#16a34a',
+};
+const PRIORITY_COLORS = { HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e' };
+const CATEGORY_COLORS  = ['#2563eb', '#16a34a', '#7c3aed', '#0891b2', '#d97706'];
 
 // ── Chart.js defaults ────────────────────────────────────────────────────
-Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
+Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
 Chart.defaults.font.size   = 11;
 
-// ── Colour palettes ──────────────────────────────────────────────────────
-const STATUS_COLORS = [
-    '#1565c0','#e65100','#c62828','#283593','#004d40',
-    '#1b5e20','#f57f17','#880e4f','#4a148c','#b71c1c','#2e7d32',
-];
-const PRIORITY_COLORS = {
-    HIGH:   '#ef5350',
-    MEDIUM: '#ffa726',
-    LOW:    '#66bb6a',
-};
-const CATEGORY_COLORS = [
-    '#42a5f5','#26a69a','#ab47bc','#ef5350','#ffa726',
-    '#66bb6a','#ec407a','#7e57c2','#26c6da','#d4e157',
-];
-const PO_GRADIENT_COLORS = [
-    '#1565c0','#1976d2','#1e88e5','#2196f3','#42a5f5',
-    '#64b5f6','#90caf9','#bbdefb','#e3f2fd','#f5f5f5',
-];
-
 // ── Chart instances ──────────────────────────────────────────────────────
-let chartStatus, chartPriority, chartCategory, chartMonthly, chartPo;
+let chartStatus, chartObsRes, chartPriority, chartCategory, chartMonthly, chartPoComparison;
 
-// ── Build / rebuild all charts ───────────────────────────────────────────
-function buildCharts(d) {
-    buildStatus(d.statusChart);
-    buildPriority(d.priorityChart);
-    buildCategory(d.categoryChart);
-    buildMonthly(d.monthlyChart);
-    if (d.showPoChart && d.poChart) buildPo(d.poChart);
+// ── Helpers ──────────────────────────────────────────────────────────────
+function toggleEmpty(canvasId, emptyId, isEmpty) {
+    document.getElementById(canvasId).style.display = isEmpty ? 'none' : '';
+    const el = document.getElementById(emptyId);
+    if (el) el.style.display = isEmpty ? 'flex' : 'none';
+}
+function kill(inst) { if (inst) { inst.destroy(); } return null; }
+function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function destroyAndCreate(instance, canvasId, config) {
-    if (instance) instance.destroy();
-    return new Chart(document.getElementById(canvasId), config);
-}
+// ── Build: Status donut ──────────────────────────────────────────────────
+function buildStatus(d) {
+    chartStatus = kill(chartStatus);
+    const empty = !d.data.length || d.data.every(v => v === 0);
+    toggleEmpty('chartStatus', 'emptyStatus', empty);
+    if (empty) return;
 
-function buildStatus(data) {
-    chartStatus = destroyAndCreate(chartStatus, 'chartStatus', {
+    chartStatus = new Chart(document.getElementById('chartStatus'), {
         type: 'doughnut',
         data: {
-            labels: data.labels,
+            labels: d.labels,
             datasets: [{
-                data: data.data,
-                backgroundColor: STATUS_COLORS.slice(0, data.labels.length),
-                borderWidth: 2,
-                borderColor: '#fff',
-                hoverOffset: 8,
+                data: d.data,
+                backgroundColor: d.raw.map(r => STATUS_COLORS[r] || '#94a3b8'),
+                borderWidth: 2, borderColor: '#fff', hoverOffset: 6,
             }],
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '65%',
+            responsive: true, maintainAspectRatio: false, cutout: '68%',
             plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { boxWidth: 12, padding: 10, font: { size: 10 } },
-                },
+                legend: { position: 'right', labels: { boxWidth: 10, padding: 10, font: { size: 10 } } },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ` ${ctx.label}: ${ctx.parsed} (${Math.round(ctx.parsed / data.data.reduce((a,b)=>a+b,0)*100)}%)`,
+                        label: ctx => {
+                            const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+                            return ` ${ctx.label}: ${ctx.parsed} (${Math.round(ctx.parsed/total*100)}%)`;
+                        },
                     },
                 },
             },
@@ -619,182 +612,263 @@ function buildStatus(data) {
     });
 }
 
-function buildPriority(data) {
-    const colors = data.labels.map(l => PRIORITY_COLORS[l] || '#90a4ae');
-    chartPriority = destroyAndCreate(chartPriority, 'chartPriority', {
-        type: 'bar',
+// ── Build: Obs Resolution donut ──────────────────────────────────────────
+function buildObsRes(d) {
+    chartObsRes = kill(chartObsRes);
+    const empty = !d.data.length || d.data.every(v => v === 0);
+    toggleEmpty('chartObsRes', 'emptyObsRes', empty);
+    if (empty) return;
+
+    chartObsRes = new Chart(document.getElementById('chartObsRes'), {
+        type: 'doughnut',
         data: {
-            labels: data.labels,
+            labels: d.labels,
             datasets: [{
-                label: 'Count',
-                data: data.data,
-                backgroundColor: colors,
-                borderRadius: 6,
-                borderSkipped: false,
+                data: d.data,
+                backgroundColor: d.raw.map(r => RESOLUTION_COLORS[r] || '#94a3b8'),
+                borderWidth: 2, borderColor: '#fff', hoverOffset: 6,
             }],
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false, cutout: '68%',
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 10, padding: 10, font: { size: 10 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+                            return ` ${ctx.label}: ${ctx.parsed} (${Math.round(ctx.parsed/total*100)}%)`;
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+// ── Build: Priority bar ──────────────────────────────────────────────────
+function buildPriority(d) {
+    chartPriority = kill(chartPriority);
+    const empty = !d.data.length || d.data.every(v => v === 0);
+    toggleEmpty('chartPriority', 'emptyPriority', empty);
+    if (empty) return;
+
+    chartPriority = new Chart(document.getElementById('chartPriority'), {
+        type: 'bar',
+        data: {
+            labels: d.labels,
+            datasets: [{
+                data: d.data,
+                backgroundColor: d.labels.map(l => PRIORITY_COLORS[l] || '#94a3b8'),
+                borderRadius: 6, borderSkipped: false,
+            }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f0f4f8' } },
+                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
                 x: { grid: { display: false } },
             },
         },
     });
 }
 
-function buildCategory(data) {
-    chartCategory = destroyAndCreate(chartCategory, 'chartCategory', {
+// ── Build: Category horizontal bar ───────────────────────────────────────
+function buildCategory(d) {
+    chartCategory = kill(chartCategory);
+    const empty = !d.data.length || d.data.every(v => v === 0);
+    toggleEmpty('chartCategory', 'emptyCategory', empty);
+    if (empty) return;
+
+    chartCategory = new Chart(document.getElementById('chartCategory'), {
         type: 'bar',
         data: {
-            labels: data.labels,
+            labels: d.labels,
             datasets: [{
-                label: 'Count',
-                data: data.data,
-                backgroundColor: CATEGORY_COLORS.slice(0, data.labels.length),
-                borderRadius: 6,
-                borderSkipped: false,
+                data: d.data,
+                backgroundColor: CATEGORY_COLORS.slice(0, d.labels.length),
+                borderRadius: 6, borderSkipped: false,
             }],
         },
         options: {
             indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f0f4f8' } },
-                y: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
+                y: { grid: { display: false } },
             },
         },
     });
 }
 
-function buildMonthly(data) {
-    chartMonthly = destroyAndCreate(chartMonthly, 'chartMonthly', {
+// ── Build: Monthly dual-line trend ───────────────────────────────────────
+function buildMonthly(d) {
+    chartMonthly = kill(chartMonthly);
+    const allZero = d.visits.every(v => v === 0) && d.observations.every(v => v === 0);
+    toggleEmpty('chartMonthly', 'emptyMonthly', allZero);
+    if (allZero) return;
+
+    const primary = getComputedStyle(document.documentElement).getPropertyValue('--sl-primary').trim() || '#1d7a6e';
+
+    chartMonthly = new Chart(document.getElementById('chartMonthly'), {
         type: 'line',
         data: {
-            labels: data.labels,
-            datasets: [{
-                label: 'Matrices Created',
-                data: data.data,
-                borderColor: '#1565c0',
-                backgroundColor: 'rgba(21,101,192,.12)',
-                borderWidth: 2.5,
-                pointRadius: 4,
-                pointBackgroundColor: '#1565c0',
-                pointHoverRadius: 6,
-                tension: 0.4,
-                fill: true,
-            }],
+            labels: d.labels,
+            datasets: [
+                {
+                    label: 'Visits',
+                    data: d.visits,
+                    borderColor: primary,
+                    backgroundColor: primary + '18',
+                    borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+                    tension: 0.4, fill: true,
+                },
+                {
+                    label: 'Observations',
+                    data: d.observations,
+                    borderColor: '#d97706',
+                    backgroundColor: '#d9770610',
+                    borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+                    tension: 0.4, fill: false, borderDash: [4, 3],
+                },
+            ],
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: { position: 'top', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } },
                 tooltip: { mode: 'index', intersect: false },
             },
             scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f0f4f8' } },
+                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
                 x: { grid: { display: false } },
             },
         },
     });
 }
 
-function buildPo(data) {
-    chartPo = destroyAndCreate(chartPo, 'chartPo', {
+// ── Build: PO Comparison stacked horizontal bar ──────────────────────────
+function buildPoComparison(d) {
+    if (!d) return;
+    chartPoComparison = kill(chartPoComparison);
+    const empty = !d.labels.length;
+    toggleEmpty('chartPoComparison', 'emptyPoComparison', empty);
+    if (empty) return;
+
+    // Adjust container height based on number of POs
+    const h = Math.max(220, d.labels.length * 30 + 60);
+    document.getElementById('poComparisonContainer').style.height = h + 'px';
+
+    chartPoComparison = new Chart(document.getElementById('chartPoComparison'), {
         type: 'bar',
         data: {
-            labels: data.labels,
-            datasets: [{
-                label: 'Matrices',
-                data: data.data,
-                backgroundColor: PO_GRADIENT_COLORS.slice(0, data.labels.length),
-                borderRadius: 6,
-                borderSkipped: false,
-            }],
+            labels: d.labels,
+            datasets: [
+                {
+                    label: 'Open',
+                    data: d.open,
+                    backgroundColor: '#fbbf24',
+                    borderRadius: 4, borderSkipped: false, stack: 'obs',
+                },
+                {
+                    label: 'Resolved',
+                    data: d.resolved,
+                    backgroundColor: '#16a34a',
+                    borderRadius: 4, borderSkipped: false, stack: 'obs',
+                },
+            ],
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } },
+                tooltip: { mode: 'index', intersect: false },
+            },
             scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f0f4f8' } },
-                x: { grid: { display: false } },
+                x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' }, stacked: true },
+                y: { grid: { display: false }, stacked: true, ticks: { font: { size: 10 } } },
             },
         },
     });
 }
 
 // ── Render stat cards ────────────────────────────────────────────────────
-function renderStats(stats) {
-    document.getElementById('statTotal').textContent  = stats.total;
-    document.getElementById('statOpen').textContent   = stats.open;
-    document.getElementById('statClosed').textContent = stats.closed;
-    document.getElementById('statAction').textContent = stats.action_required;
-    document.getElementById('statAvg').textContent    = stats.avg_days;
+function renderStats(s) {
+    document.getElementById('statTotal').textContent        = s.total;
+    document.getElementById('statOpen').textContent         = s.open;
+    document.getElementById('statCompleted').textContent    = s.completed;
+    document.getElementById('statObsTotal').textContent     = s.obs_total;
+    document.getElementById('statObsResolved').textContent  = s.obs_resolved;
+    document.getElementById('statObsPending').textContent   = s.obs_pending ?? 0;
+    document.getElementById('statActionMatrix').textContent = s.action_matrix;
+    document.getElementById('statAvgDays').textContent      = s.avg_days;
+    const myDesk = document.getElementById('statMyDesk');
+    if (myDesk) myDesk.textContent = s.on_my_desk ?? 0;
 }
 
-// ── Render recent matrices table ─────────────────────────────────────────
+// ── Render recent visits table ────────────────────────────────────────────
 function renderRecent(rows) {
     const tbody = document.getElementById('tbodyRecent');
-    if (!rows || !rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No data available</td></tr>';
+    if (!rows?.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4" style="font-size:.82rem">No visits found</td></tr>';
         return;
     }
-    tbody.innerHTML = rows.map(m => `
+    tbody.innerHTML = rows.map(v => `
         <tr>
-            <td><a href="${MATRIX_URL}/${m.acm_id}" class="text-decoration-none fw-semibold" style="color:#1565c0;">${esc(m.acm_id)}</a></td>
-            <td>${esc(m.po_code)}</td>
-            <td><span class="badge-priority bp-${esc(m.priority)}">${esc(m.priority)}</span></td>
-            <td><span class="badge-status bs-${esc(m.status_raw)}">${esc(m.status)}</span></td>
-            <td style="white-space:nowrap;font-size:.8rem;color:#78909c;">${esc(m.created_at)}</td>
+            <td><a href="${VISIT_URL}/${v.id}" class="text-decoration-none fw-semibold" style="color:var(--sl-primary)">${esc(v.visit_code)}</a></td>
+            <td style="color:#64748b">${esc(v.po_code)}</td>
+            <td><span class="vbadge vb-${esc(v.status_raw)}">${esc(v.status)}</span></td>
+            <td style="color:#94a3b8;font-size:.78rem;white-space:nowrap">${esc(v.created_at)}</td>
         </tr>
     `).join('');
 }
 
-// ── Render longest pending table ─────────────────────────────────────────
+// ── Render longest pending table ──────────────────────────────────────────
 function renderPending(rows) {
     const tbody = document.getElementById('tbodyPending');
-    if (!rows || !rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No pending matrices</td></tr>';
+    if (!rows?.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4" style="font-size:.82rem">No pending visits</td></tr>';
         return;
     }
     const maxDays = Math.max(...rows.map(r => r.days_pending), 1);
-    tbody.innerHTML = rows.map(m => {
-        const pct = Math.min(100, Math.round(m.days_pending / maxDays * 100));
+    tbody.innerHTML = rows.map(v => {
+        const pct = Math.min(100, Math.round(v.days_pending / maxDays * 100));
         return `
         <tr>
-            <td><a href="${MATRIX_URL}/${m.acm_id}" class="text-decoration-none fw-semibold" style="color:#1565c0;">${esc(m.acm_id)}</a></td>
-            <td>${esc(m.po_code)}</td>
-            <td><span class="badge-priority bp-${esc(m.priority)}">${esc(m.priority)}</span></td>
-            <td><span class="badge-status bs-${esc(m.status_raw)}">${esc(m.status)}</span></td>
+            <td><a href="${VISIT_URL}/${v.id}" class="text-decoration-none fw-semibold" style="color:var(--sl-primary)">${esc(v.visit_code)}</a></td>
+            <td style="color:#64748b">${esc(v.po_code)}</td>
+            <td><span class="vbadge vb-${esc(v.status_raw)}">${esc(v.status)}</span></td>
             <td>
                 <div class="days-bar">
-                    <div class="days-bar-fill"><span style="width:${pct}%"></span></div>
-                    <span class="days-num">${m.days_pending}d</span>
+                    <div class="days-bar-track"><div class="days-bar-fill" style="width:${pct}%"></div></div>
+                    <span class="days-num">${v.days_pending}d</span>
                 </div>
             </td>
         </tr>`;
     }).join('');
 }
 
-// ── XSS helper ───────────────────────────────────────────────────────────
-function esc(s) {
-    if (s == null) return '';
-    return String(s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+// ── Full rebuild ──────────────────────────────────────────────────────────
+function buildAll(d) {
+    buildStatus(d.statusChart);
+    buildObsRes(d.obsResolutionChart);
+    buildPriority(d.priorityChart);
+    buildCategory(d.categoryChart);
+    buildMonthly(d.monthlyChart);
+    if (d.showPoPanel && d.poComparisonChart) buildPoComparison(d.poComparisonChart);
+    renderStats(d.stats);
+    renderRecent(d.recentVisits);
+    renderPending(d.longestPending);
 }
 
-// ── AJAX refresh ─────────────────────────────────────────────────────────
+// ── AJAX refresh ──────────────────────────────────────────────────────────
 function refresh() {
-    const period  = document.getElementById('filterPeriod').value;
-    const poEl    = document.getElementById('filterPo');
-    const poCode  = poEl ? poEl.value : '';
+    const period = document.querySelector('.period-btn.active')?.dataset.period || '6months';
+    const poEl   = document.getElementById('filterPo');
+    const poCode = poEl ? poEl.value : '';
 
     document.getElementById('loadingOverlay').classList.add('active');
 
@@ -802,43 +876,32 @@ function refresh() {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
     })
     .then(r => r.json())
-    .then(d => {
-        renderStats(d.stats);
-        buildStatus(d.statusChart);
-        buildPriority(d.priorityChart);
-        buildCategory(d.categoryChart);
-        buildMonthly(d.monthlyChart);
-        if (d.showPoChart && d.poChart) buildPo(d.poChart);
-        renderRecent(d.recentMatrices);
-        renderPending(d.longestPending);
-        document.getElementById('refreshedAt').textContent =
-            new Date().toLocaleString('en-BD', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-    })
+    .then(d => buildAll(d))
     .catch(console.error)
-    .finally(() => {
-        document.getElementById('loadingOverlay').classList.remove('active');
-    });
+    .finally(() => document.getElementById('loadingOverlay').classList.remove('active'));
 }
 
-// ── Events ───────────────────────────────────────────────────────────────
-document.getElementById('btnRefresh').addEventListener('click', refresh);
+// ── Period pill events ────────────────────────────────────────────────────
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        refresh();
+    });
+});
 
-document.getElementById('btnClearFilters').addEventListener('click', () => {
-    document.getElementById('filterPeriod').value = '6months';
-    const poEl = document.getElementById('filterPo');
+// ── PO filter ─────────────────────────────────────────────────────────────
+const poEl = document.getElementById('filterPo');
+if (poEl) poEl.addEventListener('change', refresh);
+
+// ── Clear ─────────────────────────────────────────────────────────────────
+document.getElementById('btnClear').addEventListener('click', () => {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === '6months'));
     if (poEl) poEl.value = '';
     refresh();
 });
 
-// Auto-refresh on filter change (debounced)
-['filterPeriod', 'filterPo'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('change', refresh);
-});
-
-// ── Initial render ───────────────────────────────────────────────────────
-buildCharts(ANALYTICS);
-renderRecent(ANALYTICS.recentMatrices);
-renderPending(ANALYTICS.longestPending);
+// ── Initial render ────────────────────────────────────────────────────────
+buildAll(ANA);
 </script>
 @endpush
